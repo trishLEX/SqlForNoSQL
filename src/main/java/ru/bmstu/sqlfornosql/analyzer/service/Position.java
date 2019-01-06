@@ -85,6 +85,14 @@ public class Position implements Comparable<Position>, Cloneable {
         return super.clone();
     }
 
+    public Position copy() {
+        try {
+            return (Position) clone();
+        } catch (CloneNotSupportedException e) {
+            throw new IllegalStateException("Can't copy position", e);
+        }
+    }
+
     @Override
     public int compareTo(Position other) {
         return index.compareTo(other.index);

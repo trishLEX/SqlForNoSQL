@@ -1,0 +1,109 @@
+ColId                       ::= IDENT | '"' IDENT '"'
+
+ColRef                      ::= intConst //>=0 номер столбца
+                            |   ColId
+
+QualifiedName               ::= ColId ('.'ColId)*
+
+ColRefList                  ::= ColRef (',' ColRef)*
+
+SelectStmt                  ::= SELECT AllDistinctClause? TargetList?
+                                FROM FromList WhereClause?
+                                GroupClause? HavingClause? SortClause? LimitClause? OffsetClause?
+                                ( UnionIntOps ALL? SelectStmt )?
+
+AllDistinctClause           ::= ALL
+                            |   DISTINCT (ON '(' ColRefList ')')?
+
+UnionIntOps                 ::= UNION
+                            |   INTERSECT
+                            |   EXCEPT
+
+SortClause                  ::= ORDER BY SortByElem (',' SortByElem)*
+
+SortByElem                  ::= colRef AscDesc?
+
+LimitClause                 ::= LIMIT intConst //intConst >= 0
+
+OffsetClause                ::= OFFSET intConst //intConst >= 0
+
+AscDesc                     ::= ASC | DESC //ASC ON DEFAULT
+
+TargetList                  ::= TargetEl (',' TargetEl)*
+
+TargetEl                    ::= TargetExpr AliasClause?
+                            |   '*'
+
+TargetExpr                  ::= QualifiedName                //если есть аггрегатные функции, то должен содержаться или в них или в GROUP BY
+                            |   AVG   '(' QualifiedName ')'
+                            |   SUM   '(' QualifiedName ')'
+                            |   COUNT '(' QualifiedName | * ')'
+                            |   MIN   '(' QualifiedName ')'
+                            |   MAX   '(' QualifiedName ')'
+
+FromList                    ::= TableRef (',' TableRef)*
+
+WhereClause                 ::= WHERE BoolExpr
+
+GroupClause                 ::= GROUP BY ColRef (',' ColRef)*
+
+HavingClause                ::= HAVING BoolExpr
+
+TableRef                    ::= QualifiedName AliasClause? ( JoinType? JOIN TableRef JoinQual )?
+
+AliasClause                 ::= AS ColId
+                            |   ColId
+
+JoinType                    ::= FULL OUTER?
+                            |   LEFT OUTER?
+                            |   RIGHT OUTER?
+                            |   INNER
+
+JoinQual                    ::= USING '(' ColId (',' ColId)* ')'
+                            |   ON BoolExpr
+
+ArithmExpr                  ::= ArithmExprTerm ( {'+' | '-'} ArithmExprTerm )*
+ArithmExprTerm              ::= ArithmExprFactor ( {'*' | '/'} ArithmExprFactor )*
+ArithmExprFactor            ::= IDENT //MUST BE NUMERIC
+                            |   NumericValue
+                            |   '-' ArithmExprFactor
+
+BoolExpr                    ::= BoolExprTerm (OR BoolExprTerm)*
+BoolExprTerm                ::= BoolExprFactor (AND BoolExprFactor)*
+BoolExprFactor              ::= BoolConst BoolRHS?
+                            |   NOT BoolExprFactor BoolRHS?
+                            |   '(' BoolExpr ')' BoolRHS?
+                            |   IDENT RHS?                 //NOT NUMERIC TYPE
+                            |   ArithmExpr ArithmRHS
+
+BoolConst                   ::= TRUE | FALSE | NULL
+
+DateTimeConst               ::= DateValue'::'DATE
+                            |   TimeValue'::'TIME
+                            |   TimestampValue'::'TIMESTAMP
+
+RHS                         ::= BoolRHS | DateRHS | StringRHS | IN '(' ConstList ')' //SELECT with 1 column
+
+ConstList                   ::= Const (',' Const)* //Const should be of one type
+
+Const                       ::= NumberConst | StringConst | BoolConst | DateTimeConst
+
+ArithmRHS                   ::= '<'  ArithmExpr
+                            |   '<=' ArithmExpr
+                            |   '>'  ArithmExpr
+                            |   '>=' ArithmExpr
+                            |   '='  ArithmExpr
+                            |   '!=' ArithmExpr
+                            |   NOT? BETWEEN ArithmExpr AND ArithmExpr         // ARITHMETIC ONLY
+
+BoolRHS                     ::= IS NOT? BoolConst
+
+DateRHS                     ::= '<'  DateTimeConst
+                            |   '<=' DateTimeConst
+                            |   '>'  DateTimeConst
+                            |   '>=' DateTimeConst
+                            |   '='  DateTimeConst
+                            |   '!=' DateTimeConst
+                            |   NOT? BETWEEN DateTimeConst AND DateTimeConst
+
+StringRHS                   ::= LIKE CharacterValue
