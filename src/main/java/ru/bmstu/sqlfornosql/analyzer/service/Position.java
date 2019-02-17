@@ -41,7 +41,8 @@ public class Position implements Comparable<Position>, Cloneable {
     }
 
     public boolean isSpecial() {
-        return index != text.length() && (text.charAt(index) == ';'
+        return index == text.length()
+                || text.charAt(index) == ';'
                 || text.charAt(index) == '('
                 || text.charAt(index) == ')'
                 || text.charAt(index) == '['
@@ -58,7 +59,8 @@ public class Position implements Comparable<Position>, Cloneable {
                 || text.charAt(index) == '.'
                 || text.charAt(index) == '`'
                 || text.charAt(index) == '\''
-        );
+                || text.charAt(index) == '"'
+                || text.charAt(index) == ':';
     }
 
     public void nextCp() {

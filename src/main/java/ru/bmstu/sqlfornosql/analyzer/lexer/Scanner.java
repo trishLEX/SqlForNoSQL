@@ -14,8 +14,8 @@ public class Scanner {
     private Position cur;
     private List<Message> messages;
 
-    public Scanner(Position cur) {
-        this.cur = cur;
+    public Scanner(String program) {
+        this.cur = new Position(program);
         this.messages = new ArrayList<>();
     }
 
@@ -33,10 +33,10 @@ public class Scanner {
                     value = new StringBuilder("a");
                     cur.nextCp();
                     if (cur.getChar() == 'l') {
-                        value.append("l");
+                        value.append('l');
                         cur.nextCp();
                         if (cur.getChar() == 'l') {
-                            value.append("l");
+                            value.append('l');
                             cur.nextCp();
                             if (cur.isWhiteSpace() || cur.isSpecial()) {
                                 return new KeywordToken(start, cur.copy(), TokenTag.ALL);
@@ -45,10 +45,10 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 'n') {
-                        value.append("n");
+                        value.append('n');
                         cur.nextCp();
                         if (cur.getChar() == 'd') {
-                            value.append("d");
+                            value.append('d');
                             cur.nextCp();
                             if (cur.isWhiteSpace() || cur.isSpecial()) {
                                 return new KeywordToken(start, cur.copy(), TokenTag.AND);
@@ -57,10 +57,10 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 's') {
-                        value.append("s");
+                        value.append('s');
                         cur.nextCp();
                         if (cur.getChar() == 'c') {
-                            value.append("c");
+                            value.append('c');
                             cur.nextCp();
                             if (cur.isWhiteSpace() || cur.isSpecial()) {
                                 return new KeywordToken(start, cur.copy(), TokenTag.ASC);
@@ -73,10 +73,10 @@ public class Scanner {
                             return getIdent(start, value);
                         }
                     } else if (cur.getChar() == 'v') {
-                        value.append("v");
+                        value.append('v');
                         cur.nextCp();
                         if (cur.getChar() == 'g') {
-                            value.append("g");
+                            value.append('g');
                             cur.nextCp();
                             if (cur.isWhiteSpace() || cur.isSpecial()) {
                                 return new KeywordToken(start, cur.copy(), TokenTag.AVG);
@@ -92,22 +92,22 @@ public class Scanner {
                     value = new StringBuilder("b");
                     cur.nextCp();
                     if (cur.getChar() == 'e') {
-                        value.append("e");
+                        value.append('e');
                         cur.nextCp();
                         if (cur.getChar() == 't') {
-                            value.append("t");
+                            value.append('t');
                             cur.nextCp();
                             if (cur.getChar() == 'w') {
-                                value.append("w");
+                                value.append('w');
                                 cur.nextCp();
                                 if (cur.getChar() == 'e') {
-                                    value.append("e");
+                                    value.append('e');
                                     cur.nextCp();
                                     if (cur.getChar() == 'e') {
-                                        value.append("e");
+                                        value.append('e');
                                         cur.nextCp();
                                         if (cur.getChar() == 'n') {
-                                            value.append("n");
+                                            value.append('n');
                                             cur.nextCp();
                                             if (cur.isWhiteSpace() || cur.isSpecial()) {
                                                 return new KeywordToken(start, cur.copy(), TokenTag.BETWEEN);
@@ -120,7 +120,7 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 'y') {
-                        value.append("y");
+                        value.append('y');
                         cur.nextCp();
                         if (cur.isWhiteSpace() || cur.isSpecial()) {
                             return new KeywordToken(start, cur.copy(), TokenTag.BY);
@@ -135,16 +135,16 @@ public class Scanner {
                     value = new StringBuilder("c");
                     cur.nextCp();
                     if (cur.getChar() == 'o') {
-                        value.append("o");
+                        value.append('o');
                         cur.nextCp();
                         if (cur.getChar() == 'u') {
-                            value.append("u");
+                            value.append('u');
                             cur.nextCp();
                             if (cur.getChar() == 'n') {
-                                value.append("n");
+                                value.append('n');
                                 cur.nextCp();
                                 if (cur.getChar() == 't') {
-                                    value.append("t");
+                                    value.append('t');
                                     cur.nextCp();
                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                         return new KeywordToken(start, cur.copy(), TokenTag.COUNT);
@@ -161,14 +161,30 @@ public class Scanner {
                 case 'd':
                     value = new StringBuilder("d");
                     cur.nextCp();
-                    if (cur.getChar() == 'e') {
-                        value.append("e");
+                    if (cur.getChar() == 'a') {
+                        value.append('a');
+                        cur.nextCp();
+                        if (cur.getChar() == 't') {
+                            value.append('t');
+                            cur.nextCp();
+                            if (cur.getChar() == 'e') {
+                                value.append('e');
+                                cur.nextCp();
+                                if (cur.isWhiteSpace() || cur.isSpecial()) {
+                                    return new KeywordToken(start, cur.copy(), TokenTag.DATE);
+                                } else {
+                                    return getIdent(start, value);
+                                }
+                            }
+                        }
+                    } else if (cur.getChar() == 'e') {
+                        value.append('e');
                         cur.nextCp();
                         if (cur.getChar() == 's') {
-                            value.append("s");
+                            value.append('s');
                             cur.nextCp();
                             if (cur.getChar() == 'c') {
-                                value.append("c");
+                                value.append('c');
                                 cur.nextCp();
                                 if (cur.isWhiteSpace() || cur.isSpecial()) {
                                     return new KeywordToken(start, cur.copy(), TokenTag.DESC);
@@ -178,25 +194,25 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 'i') {
-                        value.append("i");
+                        value.append('i');
                         cur.nextCp();
                         if (cur.getChar() == 's') {
-                            value.append("s");
+                            value.append('s');
                             cur.nextCp();
                             if (cur.getChar() == 't') {
-                                value.append("t");
+                                value.append('t');
                                 cur.nextCp();
                                 if (cur.getChar() == 'i') {
-                                    value.append("i");
+                                    value.append('i');
                                     cur.nextCp();
                                     if (cur.getChar() == 'n') {
-                                        value.append("n");
+                                        value.append('n');
                                         cur.nextCp();
                                         if (cur.getChar() == 'c') {
-                                            value.append("c");
+                                            value.append('c');
                                             cur.nextCp();
                                             if (cur.getChar() == 't') {
-                                                value.append("t");
+                                                value.append('t');
                                                 cur.nextCp();
                                                 if (cur.isWhiteSpace() || cur.isSpecial()) {
                                                     return new KeywordToken(start, cur.copy(), TokenTag.DISTINCT);
@@ -217,19 +233,19 @@ public class Scanner {
                     value = new StringBuilder("e");
                     cur.nextCp();
                     if (cur.getChar() == 'x') {
-                        value.append("x");
+                        value.append('x');
                         cur.nextCp();
                         if (cur.getChar() == 'c') {
-                            value.append("c");
+                            value.append('c');
                             cur.nextCp();
                             if (cur.getChar() == 'e') {
-                                value.append("e");
+                                value.append('e');
                                 cur.nextCp();
                                 if (cur.getChar() == 'p') {
-                                    value.append("p");
+                                    value.append('p');
                                     cur.nextCp();
                                     if (cur.getChar() == 't') {
-                                        value.append("t");
+                                        value.append('t');
                                         cur.nextCp();
                                         if (cur.isWhiteSpace() || cur.isSpecial()) {
                                             return new KeywordToken(start, cur.copy(), TokenTag.EXCEPT);
@@ -240,16 +256,16 @@ public class Scanner {
                                 }
                             }
                         } else if (cur.getChar() == 'i') {
-                            value.append("i");
+                            value.append('i');
                             cur.nextCp();
                             if (cur.getChar() == 's') {
-                                value.append("s");
+                                value.append('s');
                                 cur.nextCp();
                                 if (cur.getChar() == 't') {
-                                    value.append("t");
+                                    value.append('t');
                                     cur.nextCp();
                                     if (cur.getChar() == 's') {
-                                        value.append("s");
+                                        value.append('s');
                                         cur.nextCp();
                                         if (cur.isWhiteSpace() || cur.isSpecial()) {
                                             return new KeywordToken(start, cur.copy(), TokenTag.EXISTS);
@@ -268,16 +284,16 @@ public class Scanner {
                     value = new StringBuilder("f");
                     cur.nextCp();
                     if (cur.getChar() == 'a') {
-                        value.append("a");
+                        value.append('a');
                         cur.nextCp();
                         if (cur.getChar() == 'l') {
-                            value.append("l");
+                            value.append('l');
                             cur.nextCp();
                             if (cur.getChar() == 's') {
-                                value.append("s");
+                                value.append('s');
                                 cur.nextCp();
                                 if (cur.getChar() == 'e') {
-                                    value.append("e");
+                                    value.append('e');
                                     cur.nextCp();
                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                         return new BoolToken(start, cur.copy(), false, TokenTag.FALSE);
@@ -288,13 +304,13 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 'r') {
-                        value.append("r");
+                        value.append('r');
                         cur.nextCp();
                         if (cur.getChar() == 'o') {
-                            value.append("o");
+                            value.append('o');
                             cur.nextCp();
                             if (cur.getChar() == 'm') {
-                                value.append("m");
+                                value.append('m');
                                 cur.nextCp();
                                 if (cur.isWhiteSpace() || cur.isSpecial()) {
                                     return new KeywordToken(start, cur.copy(), TokenTag.FROM);
@@ -304,13 +320,13 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 'u') {
-                        value.append("u");
+                        value.append('u');
                         cur.nextCp();
                         if (cur.getChar() == 'l') {
-                            value.append("l");
+                            value.append('l');
                             cur.nextCp();
                             if (cur.getChar() == 'l') {
-                                value.append("l");
+                                value.append('l');
                                 cur.nextCp();
                                 if (cur.isWhiteSpace() || cur.isSpecial()) {
                                     return new KeywordToken(start, cur.copy(), TokenTag.FULL);
@@ -327,16 +343,16 @@ public class Scanner {
                     value = new StringBuilder("g");
                     cur.nextCp();
                     if (cur.getChar() == 'r') {
-                        value.append("r");
+                        value.append('r');
                         cur.nextCp();
                         if (cur.getChar() == 'o') {
                             value.append('o');
                             cur.nextCp();
                             if (cur.getChar() == 'u') {
-                                value.append("u");
+                                value.append('u');
                                 cur.nextCp();
                                 if (cur.getChar() == 'p') {
-                                    value.append("p");
+                                    value.append('p');
                                     cur.nextCp();
                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                         return new KeywordToken(start, cur.copy(), TokenTag.GROUP);
@@ -354,19 +370,19 @@ public class Scanner {
                     value = new StringBuilder("h");
                     cur.nextCp();
                     if (cur.getChar() == 'a') {
-                        value.append("a");
+                        value.append('a');
                         cur.nextCp();
                         if (cur.getChar() == 'v') {
-                            value.append("v");
+                            value.append('v');
                             cur.nextCp();
                             if (cur.getChar() == 'i') {
-                                value.append("i");
+                                value.append('i');
                                 cur.nextCp();
                                 if (cur.getChar() == 'n') {
-                                    value.append("n");
+                                    value.append('n');
                                     cur.nextCp();
                                     if (cur.getChar() == 'g') {
-                                        value.append("g");
+                                        value.append('g');
                                         cur.nextCp();
                                         if (cur.isWhiteSpace() || cur.isSpecial()) {
                                             return new KeywordToken(start, cur.copy(), TokenTag.HAVING);
@@ -385,16 +401,16 @@ public class Scanner {
                     value = new StringBuilder("i");
                     cur.nextCp();
                     if (cur.getChar() == 'n') {
-                        value.append("n");
+                        value.append('n');
                         cur.nextCp();
                         if (cur.getChar() == 'n') {
-                            value.append("n");
+                            value.append('n');
                             cur.nextCp();
                             if (cur.getChar() == 'e') {
-                                value.append("e");
+                                value.append('e');
                                 cur.nextCp();
                                 if (cur.getChar() == 'r') {
-                                    value.append("r");
+                                    value.append('r');
                                     cur.nextCp();
                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                         return new KeywordToken(start, cur.copy(), TokenTag.INNER);
@@ -404,25 +420,25 @@ public class Scanner {
                                 }
                             }
                         } else if (cur.getChar() == 't') {
-                            value.append("t");
+                            value.append('t');
                             cur.nextCp();
                             if (cur.getChar() == 'e') {
-                                value.append("e");
+                                value.append('e');
                                 cur.nextCp();
                                 if (cur.getChar() == 'r') {
-                                    value.append("r");
+                                    value.append('r');
                                     cur.nextCp();
                                     if (cur.getChar() == 's') {
-                                        value.append("s");
+                                        value.append('s');
                                         cur.nextCp();
                                         if (cur.getChar() == 'e') {
-                                            value.append("e");
+                                            value.append('e');
                                             cur.nextCp();
                                             if (cur.getChar() == 'c') {
-                                                value.append("c");
+                                                value.append('c');
                                                 cur.nextCp();
                                                 if (cur.getChar() == 't') {
-                                                    value.append("t");
+                                                    value.append('t');
                                                     cur.nextCp();
                                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                                         return new KeywordToken(start, cur.copy(), TokenTag.INTERSECT);
@@ -441,7 +457,7 @@ public class Scanner {
                             return getIdent(start, value);
                         }
                     } else if (cur.getChar() == 's') {
-                        value.append("s");
+                        value.append('s');
                         cur.nextCp();
                         if (cur.isWhiteSpace() || cur.isSpecial()) {
                             return new KeywordToken(start, cur.copy(), TokenTag.IS);
@@ -456,13 +472,13 @@ public class Scanner {
                     value = new StringBuilder("j");
                     cur.nextCp();
                     if (cur.getChar() == 'o') {
-                        value.append("o");
+                        value.append('o');
                         cur.nextCp();
                         if (cur.getChar() == 'i') {
-                            value.append("i");
+                            value.append('i');
                             cur.nextCp();
                             if (cur.getChar() == 'n') {
-                                value.append("n");
+                                value.append('n');
                                 cur.nextCp();
                                 if (cur.isWhiteSpace() || cur.isSpecial()) {
                                     return new KeywordToken(start, cur.copy(), TokenTag.JOIN);
@@ -479,13 +495,13 @@ public class Scanner {
                     value = new StringBuilder("l");
                     cur.nextCp();
                     if (cur.getChar() == 'e') {
-                        value.append("e");
+                        value.append('e');
                         cur.nextCp();
                         if (cur.getChar() == 'f') {
-                            value.append("f");
+                            value.append('f');
                             cur.nextCp();
                             if (cur.getChar() == 't') {
-                                value.append("t");
+                                value.append('t');
                                 cur.nextCp();
                                 if (cur.isWhiteSpace() || cur.isSpecial()) {
                                     return new KeywordToken(start, cur.copy(), TokenTag.LEFT);
@@ -495,13 +511,13 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 'i') {
-                        value.append("i");
+                        value.append('i');
                         cur.nextCp();
                         if (cur.getChar() == 'k') {
-                            value.append("k");
+                            value.append('k');
                             cur.nextCp();
                             if (cur.getChar() == 'e') {
-                                value.append("e");
+                                value.append('e');
                                 cur.nextCp();
                                 if (cur.isWhiteSpace() || cur.isSpecial()) {
                                     return new KeywordToken(start, cur.copy(), TokenTag.LIKE);
@@ -510,13 +526,13 @@ public class Scanner {
                                 }
                             }
                         } else if (cur.getChar() == 'm') {
-                            value.append("m");
+                            value.append('m');
                             cur.nextCp();
                             if (cur.getChar() == 'i') {
-                                value.append("i");
+                                value.append('i');
                                 cur.nextCp();
                                 if (cur.getChar() == 't') {
-                                    value.append("t");
+                                    value.append('t');
                                     cur.nextCp();
                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                         return new KeywordToken(start, cur.copy(), TokenTag.LIMIT);
@@ -534,10 +550,10 @@ public class Scanner {
                     value = new StringBuilder("m");
                     cur.nextCp();
                     if (cur.getChar() == 'a') {
-                        value.append("a");
+                        value.append('a');
                         cur.nextCp();
                         if (cur.getChar() == 'x') {
-                            value.append("x");
+                            value.append('x');
                             cur.nextCp();
                             if (cur.isWhiteSpace() || cur.isSpecial()) {
                                 return new KeywordToken(start, cur.copy(), TokenTag.MAX);
@@ -546,10 +562,10 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 'i') {
-                        value.append("i");
+                        value.append('i');
                         cur.nextCp();
                         if (cur.getChar() == 'n') {
-                            value.append("n");
+                            value.append('n');
                             cur.nextCp();
                             if (cur.isWhiteSpace() || cur.isSpecial()) {
                                 return new KeywordToken(start, cur.copy(), TokenTag.MIN);
@@ -568,7 +584,7 @@ public class Scanner {
                         value.append('o');
                         cur.nextCp();
                         if (cur.getChar() == 't') {
-                            value.append("t");
+                            value.append('t');
                             cur.nextCp();
                             if (cur.isWhiteSpace() || cur.isSpecial()) {
                                 return new KeywordToken(start, cur.copy(), TokenTag.NOT);
@@ -580,10 +596,10 @@ public class Scanner {
                         value.append('u');
                         cur.nextCp();
                         if (cur.getChar() == 'l') {
-                            value.append("l");
+                            value.append('l');
                             cur.nextCp();
                             if (cur.getChar() == 'l') {
-                                value.append("l");
+                                value.append('l');
                                 cur.nextCp();
                                 if (cur.isWhiteSpace() || cur.isSpecial()) {
                                     return new BoolToken(start, cur.copy(), null, TokenTag.NULL);
@@ -600,19 +616,19 @@ public class Scanner {
                     value = new StringBuilder("o");
                     cur.nextCp();
                     if (cur.getChar() == 'f') {
-                        value.append("f");
+                        value.append('f');
                         cur.nextCp();
                         if (cur.getChar() == 'f') {
-                            value.append("f");
+                            value.append('f');
                             cur.nextCp();
                             if (cur.getChar() == 's') {
-                                value.append("s");
+                                value.append('s');
                                 cur.nextCp();
                                 if (cur.getChar() == 'e') {
-                                    value.append("e");
+                                    value.append('e');
                                     cur.nextCp();
                                     if (cur.getChar() == 't') {
-                                        value.append("t");
+                                        value.append('t');
                                         cur.nextCp();
                                         if (cur.isWhiteSpace() || cur.isSpecial()) {
                                             return new KeywordToken(start, cur.copy(), TokenTag.OFFSET);
@@ -624,7 +640,7 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 'n') {
-                        value.append("n");
+                        value.append('n');
                         cur.nextCp();
                         if (cur.isWhiteSpace() || cur.isSpecial()) {
                             return new KeywordToken(start, cur.copy(), TokenTag.ON);
@@ -632,24 +648,41 @@ public class Scanner {
                             return getIdent(start, value);
                         }
                     } else if (cur.getChar() == 'r') {
-                        value.append("r");
+                        value.append('r');
                         cur.nextCp();
-                        if (cur.isWhiteSpace() || cur.isSpecial()) {
+                        
+                        if (cur.getChar() == 'd') {
+                            value.append('d');
+                            cur.nextCp();
+                            if (cur.getChar() == 'e') {
+                                value.append('e');
+                                cur.nextCp();
+                                if (cur.getChar() == 'r') {
+                                    value.append('r');
+                                    cur.nextCp();
+                                    if (cur.isWhiteSpace() || cur.isSpecial()) {
+                                        return new KeywordToken(start, cur.copy(), TokenTag.ORDER);
+                                    } else {
+                                        return getIdent(start, value);
+                                    }
+                                }
+                            }
+                        } else if (cur.isWhiteSpace() || cur.isSpecial()) {
                             return new KeywordToken(start, cur.copy(), TokenTag.OR);
                         } else {
                             return getIdent(start, value);
                         }
                     } else if (cur.getChar() == 'u') {
-                        value.append("u");
+                        value.append('u');
                         cur.nextCp();
                         if (cur.getChar() == 't') {
-                            value.append("t");
+                            value.append('t');
                             cur.nextCp();
                             if (cur.getChar() == 'e') {
-                                value.append("e");
+                                value.append('e');
                                 cur.nextCp();
                                 if (cur.getChar() == 'r') {
-                                    value.append("r");
+                                    value.append('r');
                                     cur.nextCp();
                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                         return new KeywordToken(start, cur.copy(), TokenTag.OUTER);
@@ -667,16 +700,16 @@ public class Scanner {
                     value = new StringBuilder("r");
                     cur.nextCp();
                     if (cur.getChar() == 'i') {
-                        value.append("i");
+                        value.append('i');
                         cur.nextCp();
                         if (cur.getChar() == 'g') {
-                            value.append("g");
+                            value.append('g');
                             cur.nextCp();
                             if (cur.getChar() == 'h') {
-                                value.append("h");
+                                value.append('h');
                                 cur.nextCp();
                                 if (cur.getChar() == 't') {
-                                    value.append("t");
+                                    value.append('t');
                                     cur.nextCp();
                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                         return new KeywordToken(start, cur.copy(), TokenTag.RIGHT);
@@ -694,19 +727,19 @@ public class Scanner {
                     value = new StringBuilder("s");
                     cur.nextCp();
                     if (cur.getChar() == 'e') {
-                        value.append("e");
+                        value.append('e');
                         cur.nextCp();
                         if (cur.getChar() == 'l') {
-                            value.append("l");
+                            value.append('l');
                             cur.nextCp();
                             if (cur.getChar() == 'e') {
-                                value.append("e");
+                                value.append('e');
                                 cur.nextCp();
                                 if (cur.getChar() == 'c') {
-                                    value.append("c");
+                                    value.append('c');
                                     cur.nextCp();
                                     if (cur.getChar() == 't') {
-                                        value.append("t");
+                                        value.append('t');
                                         cur.nextCp();
                                         if (cur.isWhiteSpace() || cur.isSpecial()) {
                                             return new KeywordToken(start, cur.copy(), TokenTag.SELECT);
@@ -718,10 +751,10 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 'u') {
-                        value.append("u");
+                        value.append('u');
                         cur.nextCp();
                         if (cur.getChar() == 'm') {
-                            value.append("m");
+                            value.append('m');
                             cur.nextCp();
                             if (cur.isWhiteSpace() || cur.isSpecial()) {
                                 return new KeywordToken(start, cur.copy(), TokenTag.SUM);
@@ -736,14 +769,52 @@ public class Scanner {
                 case 't':
                     value = new StringBuilder("t");
                     cur.nextCp();
-                    if (cur.getChar() == 'r') {
-                        value.append("r");
+                    if (cur.getChar() == 'i') {
+                        value.append("i");
                         cur.nextCp();
-                        if (cur.getChar() == 'u') {
-                            value.append("u");
+                        if (cur.getChar() == 'm') {
+                            value.append("m");
                             cur.nextCp();
                             if (cur.getChar() == 'e') {
                                 value.append("e");
+                                cur.nextCp();
+                                if (cur.getChar() == 's') {
+                                    value.append("s");
+                                    cur.nextCp();
+                                    if (cur.getChar() == 't') {
+                                        value.append("t");
+                                        cur.nextCp();
+                                        if (cur.getChar() == 'a') {
+                                            value.append("a");
+                                            cur.nextCp();
+                                            if (cur.getChar() == 'm') {
+                                                value.append("m");
+                                                cur.nextCp();
+                                                if (cur.getChar() == 'p') {
+                                                    value.append("p");
+                                                    cur.nextCp();
+                                                    if (cur.isWhiteSpace() || cur.isSpecial())
+                                                        return new KeywordToken(start, cur.copy(), TokenTag.TIMESTAMP);
+                                                    else
+                                                        return getIdent(start, value);
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else if (cur.isWhiteSpace() || cur.isSpecial())
+                                    return new KeywordToken(start, cur.copy(), TokenTag.TIME);
+                                else
+                                    return getIdent(start, value);
+                            }
+                        }
+                    } else if (cur.getChar() == 'r') {
+                        value.append('r');
+                        cur.nextCp();
+                        if (cur.getChar() == 'u') {
+                            value.append('u');
+                            cur.nextCp();
+                            if (cur.getChar() == 'e') {
+                                value.append('e');
                                 cur.nextCp();
                                 if (cur.isWhiteSpace() || cur.isSpecial()) {
                                     return new BoolToken(start, cur.copy(), true, TokenTag.TRUE);
@@ -760,16 +831,16 @@ public class Scanner {
                     value = new StringBuilder("u");
                     cur.nextCp();
                     if (cur.getChar() == 'n') {
-                        value.append("n");
+                        value.append('n');
                         cur.nextCp();
                         if (cur.getChar() == 'i') {
-                            value.append("i");
+                            value.append('i');
                             cur.nextCp();
                             if (cur.getChar() == 'o') {
-                                value.append("o");
+                                value.append('o');
                                 cur.nextCp();
                                 if (cur.getChar() == 'n') {
-                                    value.append("n");
+                                    value.append('n');
                                     cur.nextCp();
                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                         return new KeywordToken(start, cur.copy(), TokenTag.UNION);
@@ -780,16 +851,16 @@ public class Scanner {
                             }
                         }
                     } else if (cur.getChar() == 's') {
-                        value.append("s");
+                        value.append('s');
                         cur.nextCp();
                         if (cur.getChar() == 'i') {
-                            value.append("i");
+                            value.append('i');
                             cur.nextCp();
                             if (cur.getChar() == 'n') {
-                                value.append("n");
+                                value.append('n');
                                 cur.nextCp();
                                 if (cur.getChar() == 'g') {
-                                    value.append("g");
+                                    value.append('g');
                                     cur.nextCp();
                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                         return new KeywordToken(start, cur.copy(), TokenTag.USING);
@@ -808,16 +879,16 @@ public class Scanner {
                     cur.nextCp();
 
                     if (cur.getChar() == 'h') {
-                        value.append("h");
+                        value.append('h');
                         cur.nextCp();
                         if (cur.getChar() == 'e') {
-                            value.append("e");
+                            value.append('e');
                             cur.nextCp();
                             if (cur.getChar() == 'r') {
-                                value.append("r");
+                                value.append('r');
                                 cur.nextCp();
                                 if (cur.getChar() == 'e') {
-                                    value.append("e");
+                                    value.append('e');
                                     cur.nextCp();
                                     if (cur.isWhiteSpace() || cur.isSpecial()) {
                                         return new KeywordToken(start, cur.copy(), TokenTag.WHERE);
@@ -913,6 +984,8 @@ public class Scanner {
 
                     cur.nextCp();
 
+                    return new StringToken(start, cur.copy(), value.toString());
+
 //                    try {
 //                        Timestamp date = Timestamp.valueOf(LocalDateTime.parse(value.toString(), DateTimeFormatter.ISO_DATE_TIME));
 //                        return new DateTimeToken(TokenTag.TIMESTAMP_CONST, start, cur.copy(), date.toLocalDateTime());
@@ -952,6 +1025,11 @@ public class Scanner {
                     cur.nextCp();
 
                     return new SpecToken(TokenTag.DOT, start, cur.copy(), ".");
+
+                case ':':
+                    cur.nextCp();
+
+                    return new SpecToken(TokenTag.COLON, start, cur.copy(), ":");
 
                 default:
                    if (cur.isLetter()) {

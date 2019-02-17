@@ -1,0 +1,88 @@
+package ru.bmstu.sqlfornosql.adapters.mongo;
+
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoIterable;
+import org.bson.BsonDocument;
+import org.bson.BsonValue;
+import ru.bmstu.sqlfornosql.model.Row;
+import ru.bmstu.sqlfornosql.model.RowType;
+import ru.bmstu.sqlfornosql.model.Table;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
+import static ru.bmstu.sqlfornosql.adapters.mongo.MongoHolder.MONGO_ID;
+
+public class MongoMapper {
+    public Table mapGroupBy(MongoIterable<BsonDocument> mongoResult, MongoHolder query) {
+        Table table = new Table();
+        for (BsonDocument element : mongoResult) {
+            System.out.println(element.toString());
+            Row row = new Row();
+
+            if (!query.hasAggregateFunctions()) {
+                fillRowFromDocument(element, row);
+            } else {
+                if (element.get(MONGO_ID).isDocument()) {
+                    fillRowFromDocument(element, row);
+                } else {
+                    BsonValue value = element.get(MONGO_ID);
+                    addValueToRow(row, MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID)), value);
+                }
+
+                for (String column : element.keySet()) {
+                    if (!column.equals(MONGO_ID)) {
+                        BsonValue value = element.get(column);
+                        addValueToRow(row, column, value);
+                    }
+                }
+            }
+
+            table.add(row);
+        }
+
+        return table;
+    }
+
+    public Table mapCountAll(long count, MongoHolder query) {
+        return new Table().add("count", count, RowType.INT);
+    }
+
+    public Table mapFind(FindIterable<BsonDocument> mongoResult, MongoHolder query) {
+        Table table = new Table();
+        for (BsonDocument mongoRow : mongoResult) {
+            System.out.println(mongoRow);
+        }
+        return table;
+    }
+
+    private void fillRowFromDocument(BsonDocument element, Row row) {
+        BsonDocument idDocument = element.getDocument(MONGO_ID);
+        for (String column : idDocument.keySet()) {
+            BsonValue value = idDocument.get(column);
+            addValueToRow(row, column, value);
+        }
+    }
+
+    private void addValueToRow(Row row, String key, BsonValue value) {
+        if (value.isBoolean()) {
+            row.add(key, value.asBoolean().getValue(), RowType.BOOLEAN);
+        } else if (value.isDateTime()) {
+            row.add(
+                    key,
+                    LocalDateTime.ofInstant(Instant.ofEpochMilli(value.asDateTime().getValue()), ZoneId.systemDefault()),
+                    RowType.DATE
+            );
+        } else if (value.isDouble()) {
+            row.add(key, value.asDouble().doubleValue(), RowType.DOUBLE);
+        } else if (value.isInt64() || value.isInt32()) {
+            //TODO сделать поддержку разницы между int32 и int64
+            row.add(key, value.asInt64().getValue(), RowType.INT);
+        } else if (value.isString()) {
+            row.add(key, value.asString().getValue(), RowType.STRING);
+        } else {
+            throw new IllegalArgumentException("Unsupported type of value");
+        }
+    }
+}

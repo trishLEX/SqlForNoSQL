@@ -1,20 +1,17 @@
 package ru.bmstu.sqlfornosql.analyzer.symbols.tokens;
 
-import jdk.internal.jline.internal.Nullable;
 import ru.bmstu.sqlfornosql.analyzer.service.Fragment;
 import ru.bmstu.sqlfornosql.analyzer.service.Position;
 import ru.bmstu.sqlfornosql.analyzer.symbols.Symbol;
 
 public abstract class Token<T> extends Symbol {
-    @Nullable
     private T value;
 
-    public Token(TokenTag tag, Position start, Position follow, @Nullable T value) {
+    public Token(TokenTag tag, Position start, Position follow, T value) {
         super(tag, new Fragment(start, follow));
         this.value = value;
     }
 
-    @Nullable
     public T getValue() {
         return value;
     }
