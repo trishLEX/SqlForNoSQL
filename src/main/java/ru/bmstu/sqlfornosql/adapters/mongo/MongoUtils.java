@@ -111,7 +111,7 @@ public class MongoUtils {
                 || sqlName.startsWith("max(")) {
             return sqlName.substring(0, 3) + "_" + sqlName.substring(4, sqlName.length() - 1);
         } else if (sqlName.startsWith("count(")) {
-            return sqlName.substring(0, 5) + "_" + sqlName.substring(5, sqlName.length() - 1);
+            return sqlName.substring(0, 4) + "_" + sqlName.substring(5, sqlName.length() - 1);
         } else {
             return sqlName;
         }
