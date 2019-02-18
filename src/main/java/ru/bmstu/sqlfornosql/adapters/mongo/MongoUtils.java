@@ -85,13 +85,17 @@ public class MongoUtils {
 
         switch (function.getName().toLowerCase()) {
             case "sum":
-                createFunction("sum", field, document,"$" + field);
+                createFunction("sum", field, document, "$" + field);
                 break;
             case "avg":
-                createFunction("avg", field, document,"$" + field);
+                createFunction("avg", field, document, "$" + field);
                 break;
             case "count":
-                document.put("count", new Document("$sum", 1));
+                if (field != null){
+                    document.put("count" + "_" + field, new Document("$sum", 1));
+                } else {
+                    document.put("count", new Document("$sum", 1));
+                }
                 break;
             case "min":
                 createFunction("min", field, document,"$" + field);
@@ -111,7 +115,11 @@ public class MongoUtils {
                 || sqlName.startsWith("max(")) {
             return sqlName.substring(0, 3) + "_" + sqlName.substring(4, sqlName.length() - 1);
         } else if (sqlName.startsWith("count(")) {
-            return sqlName.substring(0, 4) + "_" + sqlName.substring(5, sqlName.length() - 1);
+            if (sqlName.contains("*")){
+                return "count";
+            } else {
+                return sqlName.substring(0, 5) + "_" + sqlName.substring(6, sqlName.length() - 1);
+            }
         } else {
             return sqlName;
         }

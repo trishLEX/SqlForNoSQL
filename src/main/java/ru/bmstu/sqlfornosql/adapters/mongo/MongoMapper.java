@@ -79,9 +79,11 @@ public class MongoMapper {
             );
         } else if (value.isDouble()) {
             row.add(key, value.asDouble().doubleValue(), RowType.DOUBLE);
-        } else if (value.isInt64() || value.isInt32()) {
+        } else if (value.isInt64()) {
             //TODO сделать поддержку разницы между int32 и int64
             row.add(key, value.asInt64().getValue(), RowType.INT);
+        } else if (value.isInt32()) {
+            row.add(key, value.asInt32().getValue(), RowType.INT);
         } else if (value.isString()) {
             row.add(key, value.asString().getValue(), RowType.STRING);
         } else {

@@ -21,7 +21,7 @@ public class MongoConverterTest {
     @Test
     public void simpleSelect() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class), BsonDocument.class);
-        System.out.println(client.executeQuery(adapter.translate("SELECT sum(intField) FROM test GROUP BY intField")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT count(*) FROM test GROUP BY intField")));
     }
 
     @After
