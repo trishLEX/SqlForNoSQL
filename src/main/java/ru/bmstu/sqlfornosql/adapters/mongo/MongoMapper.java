@@ -27,12 +27,15 @@ public class MongoMapper {
                 if (element.get(MONGO_ID).isDocument()) {
                     fillRowFromDocument(element, row);
                 } else {
-                    BsonValue value = element.get(MONGO_ID);
-                    addValueToRow(row, MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID)), value);
+                    String field = MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID));
+                    if (query.getSelectFields().contains(field)) {
+                        BsonValue value = element.get(MONGO_ID);
+                        addValueToRow(row, field, value);
+                    }
                 }
 
                 for (String column : element.keySet()) {
-                    if (!column.equals(MONGO_ID)) {
+                    if (!column.equals(MONGO_ID) && query.getSelectFields().contains(column)) {
                         BsonValue value = element.get(column);
                         addValueToRow(row, column, value);
                     }

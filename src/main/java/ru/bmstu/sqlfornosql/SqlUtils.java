@@ -95,7 +95,7 @@ public class SqlUtils {
             if (comparisonOperator.getLeftExpression() instanceof Function) {
                 Function function = ((Function)comparisonOperator.getLeftExpression());
 
-                if ("date".equals(function.getName().toLowerCase())
+                if ("date".equalsIgnoreCase(function.getName())
                         && (function.getParameters().getExpressions().size() == 2)
                         && function.getParameters().getExpressions().get(1) instanceof StringValue) {
 
@@ -124,7 +124,7 @@ public class SqlUtils {
 
             if (comparisonOperator.getLeftExpression() instanceof Function) {
                 Function function = ((Function) comparisonOperator.getLeftExpression());
-                if ("objectid".equals(function.getName().toLowerCase())
+                if ("objectid".equalsIgnoreCase(function.getName())
                         && (function.getParameters().getExpressions().size() == 1)
                         && function.getParameters().getExpressions().get(0) instanceof StringValue) {
                     String column = getStringValue(function.getParameters().getExpressions().get(0));
@@ -137,7 +137,7 @@ public class SqlUtils {
 
             if (inExpression.getLeftExpression() instanceof Function) {
                 Function function = ((Function) inExpression.getLeftExpression());
-                if ("objectid".equals(function.getName().toLowerCase())
+                if ("objectid".equalsIgnoreCase(function.getName())
                         && (function.getParameters().getExpressions().size() == 1)
                         && function.getParameters().getExpressions().get(0) instanceof StringValue) {
                     String column = getStringValue(function.getParameters().getExpressions().get(0));

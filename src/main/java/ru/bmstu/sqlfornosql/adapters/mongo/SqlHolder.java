@@ -1,13 +1,17 @@
 package ru.bmstu.sqlfornosql.adapters.mongo;
 
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.OrderByElement;
+import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
+import ru.bmstu.sqlfornosql.SqlUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class SqlHolder {
     private boolean isDistinct;
@@ -16,6 +20,7 @@ public class SqlHolder {
     private long limit;
     private Expression whereClause;
     private List<SelectItem> selectItems;
+    private List<String> selectItemsStrings;
     private List<Join> joins;
     private List<String> groupBys;
     private Expression havingClause;
@@ -58,6 +63,12 @@ public class SqlHolder {
 
     public SqlHolder withSelectItems(List<SelectItem> selectItems) {
         this.selectItems = selectItems;
+        this.selectItemsStrings = this.selectItems.stream()
+                .map(item -> {
+                    Expression expression = ((SelectExpressionItem) item).getExpression();
+                    return SqlUtils.getStringValue(expression);
+                })
+                .collect(Collectors.toList());
         return this;
     }
 
@@ -103,6 +114,10 @@ public class SqlHolder {
 
     public List<SelectItem> getSelectItems() {
         return selectItems;
+    }
+
+    public List<String> getSelectItemsStrings() {
+        return selectItemsStrings;
     }
 
     public List<Join> getJoins() {

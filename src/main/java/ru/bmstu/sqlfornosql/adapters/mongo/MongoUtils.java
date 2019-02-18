@@ -104,6 +104,19 @@ public class MongoUtils {
         }
     }
 
+    public static String makeMongoColName(String sqlName) {
+        if (sqlName.startsWith("sum(")
+                || sqlName.startsWith("avg(")
+                || sqlName.startsWith("min(")
+                || sqlName.startsWith("max(")) {
+            return sqlName.substring(0, 3) + "_" + sqlName.substring(4, sqlName.length() - 1);
+        } else if (sqlName.startsWith("count(")) {
+            return sqlName.substring(0, 5) + "_" + sqlName.substring(5, sqlName.length() - 1);
+        } else {
+            return sqlName;
+        }
+    }
+
     private static void createFunction(String functionName, String field, Document document, Object value) {
         Preconditions.checkArgument(field != null,"function "+ functionName + " must contain a single field to run on");
         document.put(functionName + "_" + field, new Document("$" + functionName, value));

@@ -18,6 +18,7 @@ public class MongoHolder {
     private boolean distinct;
     private boolean countAll;
     private List<String> groupBys;
+    private List<String> selectFields;
     private boolean hasAggregateFunctions;
     private long limit;
 
@@ -39,6 +40,11 @@ public class MongoHolder {
 
     public static MongoHolder createBySql(SqlHolder sqlHolder) {
         MongoHolder mongoHolder = new MongoHolder(sqlHolder.getTable().toString());
+
+        mongoHolder.selectFields = sqlHolder.getSelectItemsStrings()
+                .stream()
+                .map(MongoUtils::makeMongoColName)
+                .collect(Collectors.toList());
 
         if (sqlHolder.isDistinct()) {
             //if (sqlHolder.getSelectItems().size() > 1 || !sqlHolder.getGroupBys().isEmpty()) {
@@ -115,6 +121,10 @@ public class MongoHolder {
 
     public List<String> getGroupBys() {
         return groupBys;
+    }
+
+    public List<String> getSelectFields() {
+        return selectFields;
     }
 
     public long getLimit() {
