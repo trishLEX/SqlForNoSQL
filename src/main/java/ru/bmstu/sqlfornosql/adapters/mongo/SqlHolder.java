@@ -1,12 +1,9 @@
 package ru.bmstu.sqlfornosql.adapters.mongo;
 
 import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.statement.select.FromItem;
-import net.sf.jsqlparser.statement.select.Join;
-import net.sf.jsqlparser.statement.select.OrderByElement;
-import net.sf.jsqlparser.statement.select.SelectExpressionItem;
-import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.schema.Table;
+import net.sf.jsqlparser.statement.select.*;
+import ru.bmstu.sqlfornosql.DbType;
 import ru.bmstu.sqlfornosql.SqlUtils;
 
 import java.util.ArrayList;
@@ -16,7 +13,7 @@ import java.util.stream.Collectors;
 public class SqlHolder {
     private boolean isDistinct;
     private boolean isCountAll;
-    private FromItem table;
+    private FromItem fromItem;
     private long limit;
     private Expression whereClause;
     private List<SelectItem> selectItems;
@@ -25,6 +22,10 @@ public class SqlHolder {
     private List<String> groupBys;
     private Expression havingClause;
     private List<OrderByElement> orderByElements;
+    private DbType dbType;
+    private String database;
+    private String schema;
+    private String table;
 
     public SqlHolder() {
         isDistinct = false;
@@ -46,8 +47,29 @@ public class SqlHolder {
         return this;
     }
 
-    public SqlHolder withTable(FromItem table) {
-        this.table = table;
+    public SqlHolder withFromItem(FromItem fromItem) {
+        this.fromItem = fromItem;
+
+        Table table = (Table) fromItem;
+        String fullQualifiedName = table.getFullyQualifiedName();
+        String[] parts = fullQualifiedName.split("\\.");
+        if (parts.length < 3) {
+            throw new IllegalArgumentException("DbType, db and table must be specified at least");
+        }
+
+        if (parts.length == 3) {
+            this.dbType = DbType.valueOf(parts[0].toUpperCase());
+            this.database = parts[1];
+            this.table = parts[2];
+        } else if (parts.length == 4) {
+            this.dbType = DbType.valueOf(parts[0].toUpperCase());
+            this.database = parts[1];
+            this.schema = parts[2];
+            this.table = parts[3];
+        } else {
+            throw new IllegalArgumentException("Name: " + fullQualifiedName + " is malformed");
+        }
+
         return this;
     }
 
@@ -92,6 +114,42 @@ public class SqlHolder {
         return this;
     }
 
+    public SqlHolder withDbType(DbType dbType) {
+        this.dbType = dbType;
+        return this;
+    }
+
+    public SqlHolder withDatabase(String database) {
+        this.database = database;
+        return this;
+    }
+
+    public SqlHolder withSchema(String schema) {
+        this.schema = schema;
+        return this;
+    }
+
+    public SqlHolder withTable(String table) {
+        this.table = table;
+        return this;
+    }
+
+    public DbType getDbType() {
+        return dbType;
+    }
+
+    public String getDatabase() {
+        return database;
+    }
+
+    public String getSchema() {
+        return schema;
+    }
+
+    public String getTable() {
+        return table;
+    }
+
     public boolean isDistinct() {
         return isDistinct;
     }
@@ -100,8 +158,8 @@ public class SqlHolder {
         return isCountAll;
     }
 
-    public FromItem getTable() {
-        return table;
+    public FromItem getFromItem() {
+        return fromItem;
     }
 
     public long getLimit() {

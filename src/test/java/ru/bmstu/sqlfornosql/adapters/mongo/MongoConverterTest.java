@@ -21,7 +21,7 @@ public class MongoConverterTest {
     @Test
     public void simpleSelect() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class), BsonDocument.class);
-        System.out.println(client.executeQuery(adapter.translate("SELECT intField, dateField FROM test")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT intField, dateField FROM mongodb.test.test")));
     }
 
     @Test

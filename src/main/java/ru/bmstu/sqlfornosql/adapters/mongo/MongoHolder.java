@@ -11,7 +11,9 @@ import java.util.stream.Collectors;
 public class MongoHolder {
     public static final String MONGO_ID = "_id";
 
-    private String collection;
+    private String table;
+    private String database;
+
     private Document query;
     private Document projection;
     private Document sort;
@@ -33,13 +35,14 @@ public class MongoHolder {
         limit = -1;
     }
 
-    public MongoHolder(String collection) {
+    public MongoHolder(String database, String table) {
         this();
-        this.collection = collection;
+        this.database = database;
+        this.table = table;
     }
 
     public static MongoHolder createBySql(SqlHolder sqlHolder) {
-        MongoHolder mongoHolder = new MongoHolder(sqlHolder.getTable().toString());
+        MongoHolder mongoHolder = new MongoHolder(sqlHolder.getDatabase(), sqlHolder.getTable());
 
         mongoHolder.selectFields = sqlHolder.getSelectItemsStrings()
                 .stream()
@@ -96,8 +99,12 @@ public class MongoHolder {
         return mongoHolder;
     }
 
-    public String getCollection() {
-        return collection;
+    public String getTable() {
+        return table;
+    }
+
+    public String getDatabase() {
+        return database;
     }
 
     public Document getQuery() {
@@ -143,7 +150,8 @@ public class MongoHolder {
     @Override
     public String toString() {
         return "MongoHolder{" +
-                "collection='" + collection + '\'' +
+                "db='" + database + '\'' +
+                "table='" + table + '\'' +
                 ", query=" + query +
                 ", projection=" + projection +
                 ", sort=" + sort +
@@ -170,9 +178,13 @@ public class MongoHolder {
             }
         }
 
-        for (String selectField : selectFields) {
-            if (!groupBys.contains(selectField) && !isFieldWithAggregationFunction(selectField)) {
-                throw new IllegalArgumentException("Column: " + selectField + "must be in group by or aggregation function");
+        boolean hasAggregateFunctions = selectFields.stream().anyMatch(this::isFieldWithAggregationFunction);
+
+        if (hasAggregateFunctions) {
+            for (String selectField : selectFields) {
+                if (!groupBys.contains(selectField) && !isFieldWithAggregationFunction(selectField)) {
+                    throw new IllegalArgumentException("Column: " + selectField + " must be in group by or aggregation function");
+                }
             }
         }
     }

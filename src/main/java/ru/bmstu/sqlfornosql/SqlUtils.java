@@ -2,18 +2,19 @@ package ru.bmstu.sqlfornosql;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.relational.ComparisonOperator;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.InExpression;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.statement.select.AllColumns;
-import net.sf.jsqlparser.statement.select.Limit;
-import net.sf.jsqlparser.statement.select.SelectExpressionItem;
-import net.sf.jsqlparser.statement.select.SelectItem;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.*;
 import org.bson.Document;
 import ru.bmstu.sqlfornosql.adapters.mongo.DateFunction;
 import ru.bmstu.sqlfornosql.adapters.mongo.ObjectIdFunction;
+import ru.bmstu.sqlfornosql.adapters.mongo.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.mongo.WhereClauseParser;
 
 import java.math.BigInteger;
@@ -208,5 +209,54 @@ public class SqlUtils {
             return Boolean.valueOf(value.toString());
         }
         return null;
+    }
+
+    public static SqlHolder fillSqlMeta(String sql) {
+        boolean isDistinct;
+        boolean isCountAll;
+        FromItem fromItem;
+        long limit;
+        Expression whereClause;
+        List<SelectItem> selectItems;
+        List<Join> joins;
+        List<String> groupBys;
+        Expression havingClause;
+        List<OrderByElement> orderByElements;
+
+        try {
+            Statement statement = CCJSqlParserUtil.parse(sql);
+
+            if (Select.class.isAssignableFrom(statement.getClass())) {
+                PlainSelect plainSelect = (PlainSelect)(((Select)statement).getSelectBody());
+                Preconditions.checkArgument(plainSelect != null, "Can't parse statement");
+
+                isDistinct = plainSelect.getDistinct() != null;
+                isCountAll = SqlUtils.isCountAll(plainSelect.getSelectItems());
+                fromItem = plainSelect.getFromItem();
+                limit = SqlUtils.getLimit(plainSelect.getLimit());
+                whereClause = plainSelect.getWhere();
+                selectItems = plainSelect.getSelectItems();
+                joins = plainSelect.getJoins();
+                groupBys = SqlUtils.getGroupBy(plainSelect.getGroupByColumnReferences());
+                havingClause = plainSelect.getHaving();
+                orderByElements = plainSelect.getOrderByElements();
+
+                return new SqlHolder()
+                        .withDistinct(isDistinct)
+                        .withCountAll(isCountAll)
+                        .withFromItem(fromItem)
+                        .withLimit(limit)
+                        .withWhere(whereClause)
+                        .withSelectItems(selectItems)
+                        .withJoins(joins)
+                        .withGroupBy(groupBys)
+                        .withHaving(havingClause)
+                        .withOrderBy(orderByElements);
+            } else {
+                throw new IllegalArgumentException("Only select statements are supported");
+            }
+        } catch (JSQLParserException e) {
+            throw new IllegalArgumentException("Can't parse statement", e);
+        }
     }
 }
