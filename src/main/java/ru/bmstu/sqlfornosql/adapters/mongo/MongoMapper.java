@@ -11,6 +11,7 @@ import ru.bmstu.sqlfornosql.model.Table;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Map;
 
 import static ru.bmstu.sqlfornosql.adapters.mongo.MongoHolder.MONGO_ID;
 
@@ -18,14 +19,14 @@ public class MongoMapper {
     public Table mapGroupBy(MongoIterable<BsonDocument> mongoResult, MongoHolder query) {
         Table table = new Table();
         for (BsonDocument element : mongoResult) {
-            System.out.println(element.toString());
+            System.out.println(element);
             Row row = new Row();
 
             if (!query.hasAggregateFunctions()) {
-                fillRowFromDocument(element, row);
+                fillRowFromDocument(element, row, query);
             } else {
                 if (element.get(MONGO_ID).isDocument()) {
-                    fillRowFromDocument(element, row);
+                    fillRowFromDocument(element, row, query);
                 } else {
                     String field = MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID));
                     if (query.getSelectFields().contains(field)) {
@@ -56,18 +57,31 @@ public class MongoMapper {
         Table table = new Table();
         for (BsonDocument mongoRow : mongoResult) {
             System.out.println(mongoRow);
+            Row row = new Row();
+
+            for (Map.Entry<String, BsonValue> pair : mongoRow.entrySet()) {
+                addValueToRow(row, pair.getKey(), pair.getValue());
+            }
+
+            table.add(row);
         }
+
         return table;
     }
 
-    private void fillRowFromDocument(BsonDocument element, Row row) {
-        BsonDocument idDocument = element.getDocument(MONGO_ID);
-        for (String column : idDocument.keySet()) {
-            BsonValue value = idDocument.get(column);
-            addValueToRow(row, column, value);
+    private void fillRowFromDocument(BsonDocument element, Row row, MongoHolder query) {
+        if (element.get(MONGO_ID).isDocument()) {
+            BsonDocument idDocument = element.getDocument(MONGO_ID);
+            for (String column : idDocument.keySet()) {
+                BsonValue value = idDocument.get(column);
+                addValueToRow(row, column, value);
+            }
+        } else {
+            addValueToRow(row, query.getProjection().getString(MONGO_ID), element.get(MONGO_ID));
         }
     }
 
+    //TODO этот метод должен быть внутри класса Row
     private void addValueToRow(Row row, String key, BsonValue value) {
         if (value.isBoolean()) {
             row.add(key, value.asBoolean().getValue(), RowType.BOOLEAN);

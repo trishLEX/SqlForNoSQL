@@ -1,22 +1,25 @@
 package ru.bmstu.sqlfornosql.adapters.mongo;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.select.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import ru.bmstu.sqlfornosql.SqlUtils;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class MongoAdapter {
+    private static final Logger logger = LogManager.getLogger(MongoAdapter.class);
+
     private SqlHolder sqlHolder;
 
     public MongoHolder translate(String sql) {
+        logger.info("translating sql: " + sql);
+
         MongoHolder mongoHolder;
         sqlHolder = fillSqlMeta(sql);
 
@@ -76,21 +79,21 @@ public class MongoAdapter {
     }
 
     private void validate() {
-        List<SelectItem> selectItems = sqlHolder.getSelectItems();
-        List<SelectItem> filteredItems = Lists.newArrayList(
-                selectItems.stream()
-                        .filter(selectItem -> {
-                            try {
-                                if (selectItem instanceof SelectExpressionItem
-                                        && ((SelectExpressionItem) selectItem).getExpression() instanceof Column) {
-                                    return true;
-                                }
-                            } catch (NullPointerException e) {
-                                return false;
-                            }
-                            return false;
-                        })
-                        .collect(Collectors.toList()));
+//        List<SelectItem> selectItems = sqlHolder.getSelectItems();
+//        List<SelectItem> filteredItems = Lists.newArrayList(
+//                selectItems.stream()
+//                        .filter(selectItem -> {
+//                            try {
+//                                if (selectItem instanceof SelectExpressionItem
+//                                        && ((SelectExpressionItem) selectItem).getExpression() instanceof Column) {
+//                                    return true;
+//                                }
+//                            } catch (NullPointerException e) {
+//                                return false;
+//                            }
+//                            return false;
+//                        })
+//                        .collect(Collectors.toList()));
 
 //        Preconditions.checkArgument(!((selectItems.size() > 1 || SqlUtils.isSelectAll(selectItems))) && sqlHolder.isDistinct(),
 //                "cannot run distinct one more than one column");

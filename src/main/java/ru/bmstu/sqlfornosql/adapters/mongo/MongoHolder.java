@@ -82,11 +82,12 @@ public class MongoHolder {
             mongoHolder.query = (Document) WhereClauseParser.parseExpression(
                     new Document(), sqlHolder.getWhereClause(), null
             );
-            if (sqlHolder.getGroupBys().size() > 0 && sqlHolder.getHavingClause() != null) {
-                mongoHolder.query.putAll((Document) WhereClauseParser.parseExpression(
-                        new Document(), sqlHolder.getHavingClause(), null
-                ));
-            }
+        }
+
+        if (!sqlHolder.getGroupBys().isEmpty() && sqlHolder.getHavingClause() != null) {
+            mongoHolder.query.putAll((Document) WhereClauseParser.parseExpression(
+                    new Document(), sqlHolder.getHavingClause(), null
+            ));
         }
 
         mongoHolder.limit = sqlHolder.getLimit();
@@ -168,5 +169,30 @@ public class MongoHolder {
                 }
             }
         }
+
+        for (String selectField : selectFields) {
+            if (!groupBys.contains(selectField) && !isFieldWithAggregationFunction(selectField)) {
+                throw new IllegalArgumentException("Column: " + selectField + "must be in group by or aggregation function");
+            }
+        }
+    }
+
+    private String extractFieldFromFunction(String field) {
+        if (field.startsWith("sum")
+                || field.startsWith("min")
+                || field.startsWith("max")
+                || field.startsWith("avg")) {
+            return field.substring(3, field.length() - 1);
+        } else {
+            return field.substring(4, field.length() - 1);
+        }
+    }
+
+    private boolean isFieldWithAggregationFunction(String field) {
+        return field.startsWith("sum")
+                || field.startsWith("min")
+                || field.startsWith("max")
+                || field.startsWith("count")
+                || field.startsWith("avg");
     }
 }
