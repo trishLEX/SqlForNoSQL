@@ -19,9 +19,18 @@ public class MongoAdapter {
 
         mongoHolder = MongoHolder.createBySql(sqlHolder);
 
-        //validate();
+        validate();
 
         return mongoHolder;
+    }
+
+    public MongoHolder translate(SqlHolder sqlHolder) {
+        logger.info("translating sql: " + sqlHolder.toString());
+
+        this.sqlHolder = sqlHolder;
+        validate();
+
+        return MongoHolder.createBySql(sqlHolder);
     }
 
     private void validate() {

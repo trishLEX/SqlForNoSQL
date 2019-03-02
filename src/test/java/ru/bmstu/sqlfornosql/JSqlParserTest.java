@@ -12,13 +12,14 @@ public class JSqlParserTest {
     @Test
     public void selectTest() throws JSQLParserException {
         Select select = SelectUtils.buildSelectFromTable(new Table("postgresDB.postgresCatalog.schema.table"));
-        Select select1 = (Select) CCJSqlParserUtil.parse("SELECT DISTINCT a, b FROM postgresDB.postgresCatalog.schema.table WHERE a = '2018-01-01'::DATE");
+        Select select1 = (Select) CCJSqlParserUtil.parse("SELECT DISTINCT a, b FROM postgresDB.postgresCatalog.schema.table WHERE a = '2018-01-01'::DATE AND b = 1 HAVING c = 2");
         System.out.println(select1);
         PlainSelect body = (PlainSelect) select1.getSelectBody();
         //select1.getSelectBody().
         System.out.println(body.getFromItem());
         System.out.println(body.getDistinct());
         System.out.println(body.getWhere());
+        System.out.println(body.getHaving());
         System.out.println(body.getSelectItems());
     }
 
@@ -30,9 +31,20 @@ public class JSqlParserTest {
         System.out.println(select1);
         PlainSelect body = (PlainSelect) select1.getSelectBody();
         //select1.getSelectBody().
-        System.out.println(body.getFromItem());
+        System.out.println("BODY : " + body.getFromItem());
         System.out.println(body.getDistinct());
         System.out.println(body.getWhere());
         System.out.println(body.getSelectItems());
+    }
+
+    @Test
+    public void selectSeveralFromTables() throws JSQLParserException {
+        Select select = (Select) CCJSqlParserUtil.parse(
+                "SELECT table1.a, table2.b FROM postgres.db.schema.table1, postgres.db.schema.table2 "
+        );
+
+        PlainSelect body = (PlainSelect) select.getSelectBody();
+        System.out.println(body.getFromItem());
+        System.out.println(body.getJoins());
     }
 }

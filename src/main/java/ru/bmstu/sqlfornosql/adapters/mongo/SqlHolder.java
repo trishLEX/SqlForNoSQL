@@ -7,6 +7,7 @@ import ru.bmstu.sqlfornosql.DbType;
 import ru.bmstu.sqlfornosql.SqlUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -134,6 +135,17 @@ public class SqlHolder {
         return this;
     }
 
+    public SqlHolder build() {
+        List<String> usedDbs = new ArrayList<>();
+        if (fromItem instanceof Table) {
+            Table table = (Table) fromItem;
+            usedDbs.add(table.getFullyQualifiedName());
+        } else if (fromItem instanceof SubSelect) {
+            SubSelect subSelect = (SubSelect) fromItem;
+            //((PlainSelect) subSelect.getSelectBody());
+        }
+    }
+
     public DbType getDbType() {
         return dbType;
     }
@@ -192,5 +204,53 @@ public class SqlHolder {
 
     public List<OrderByElement> getOrderByElements() {
         return orderByElements;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("SELECT ");
+
+        if (isDistinct) {
+            sb.append("DISTINCT ");
+        }
+
+        sb.append(String.join(", ", selectItemsStrings));
+
+        if (fromItem != null) {
+            sb.append(" FROM ");
+            sb.append(((Table) fromItem).getName());
+        }
+
+        for (Join join : joins) {
+            sb.append(join);
+        }
+
+        if (whereClause != null) {
+            sb.append(" WHERE ");
+            sb.append(whereClause);
+        }
+
+        if (!groupBys.isEmpty()) {
+            sb.append(" GROUP BY ");
+            sb.append(String.join(", ", groupBys));
+
+            if (havingClause != null) {
+                sb.append(" HAVING ");
+                sb.append(havingClause);
+            }
+        }
+
+        if (!orderByElements.isEmpty()) {
+            sb.append(" ORDER BY ");
+            sb.append(String.join(", ",
+                    orderByElements
+                            .stream()
+                            .map(OrderByElement::toString)
+                            .collect(Collectors.toList()))
+            );
+        }
+
+        return sb.toString();
     }
 }
