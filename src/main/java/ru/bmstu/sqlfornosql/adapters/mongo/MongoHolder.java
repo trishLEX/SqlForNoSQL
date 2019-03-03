@@ -2,7 +2,8 @@ package ru.bmstu.sqlfornosql.adapters.mongo;
 
 import one.util.streamex.StreamEx;
 import org.bson.Document;
-import ru.bmstu.sqlfornosql.SqlUtils;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +43,7 @@ public class MongoHolder {
     }
 
     public static MongoHolder createBySql(SqlHolder sqlHolder) {
-        MongoHolder mongoHolder = new MongoHolder(sqlHolder.getDatabase(), sqlHolder.getTable());
+        MongoHolder mongoHolder = new MongoHolder(sqlHolder.getDatabase().getDatabaseName(), sqlHolder.getDatabase().getTable());
 
         mongoHolder.selectFields = sqlHolder.getSelectItemsStrings()
                 .stream()

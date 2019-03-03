@@ -38,6 +38,13 @@ public class JSqlParserTest {
     }
 
     @Test
+    public void severalJoinsTest() throws JSQLParserException {
+        Select select = (Select) CCJSqlParserUtil.parse("SELECT t1.a, t2.b, t3.a FROM postgres.db.t1 JOIN postgres.db.t2 ON t1.a = t2.a JOIN postgres.db.t3 ON t1.a = t3.a");
+        PlainSelect body = (PlainSelect) select.getSelectBody();
+        System.out.println(body.getJoins());
+    }
+
+    @Test
     public void selectSeveralFromTables() throws JSQLParserException {
         Select select = (Select) CCJSqlParserUtil.parse(
                 "SELECT table1.a, table2.b FROM postgres.db.schema.table1, postgres.db.schema.table2 "

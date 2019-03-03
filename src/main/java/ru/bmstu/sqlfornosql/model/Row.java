@@ -5,6 +5,7 @@ import com.google.common.base.Joiner;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class Row {
     private Map<String, RowType> typeMap;
@@ -19,6 +20,10 @@ public class Row {
         typeMap.put(key, type);
         values.put(key, value);
         return this;
+    }
+
+    public Set<String> getColumns() {
+        return values.keySet();
     }
 
     public Boolean getBool(String key) {

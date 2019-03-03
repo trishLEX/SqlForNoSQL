@@ -1,19 +1,19 @@
 package ru.bmstu.sqlfornosql.executor;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.mongodb.client.MongoDatabase;
-import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.FromItem;
+import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SubSelect;
 import org.bson.BsonDocument;
-import ru.bmstu.sqlfornosql.SqlUtils;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoAdapter;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
-import ru.bmstu.sqlfornosql.adapters.mongo.SqlHolder;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.model.Table;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class Executor {
     public Table execute(String sql) {
@@ -34,16 +34,15 @@ public class Executor {
     //TODO здесь fromItem может быть подзапросом - это нужно обработать
     private Table simpleSelect(SqlHolder sqlHolder) {
         if (sqlHolder.getFromItem() instanceof Table) {
-            switch (sqlHolder.getDbType()) {
+            switch (sqlHolder.getDatabase().getDbType()) {
                 case POSTGRES:
                     throw new UnsupportedOperationException("not implemented yet");
                 case MONGODB:
                     try (com.mongodb.MongoClient client = new com.mongodb.MongoClient()) {
-                        MongoDatabase database = client.getDatabase(sqlHolder.getDatabase());
+                        MongoDatabase database = client.getDatabase(sqlHolder.getDatabase().getDatabaseName());
                         MongoAdapter adapter = new MongoAdapter();
                         MongoClient<BsonDocument> mongoClient = new MongoClient<>(
-                                database.getCollection(sqlHolder.getTable(), BsonDocument.class),
-                                BsonDocument.class
+                                database.getCollection(sqlHolder.getDatabase().getTable(), BsonDocument.class)
                         );
                         return mongoClient.executeQuery(adapter.translate(sqlHolder));
                     }
@@ -73,12 +72,27 @@ public class Executor {
      * @return таблицу с результато выполнения запроса
      */
     private Table selectWithJoins(SqlHolder sqlHolder) {
-        Map<Join, Table> results = new HashMap<>();
-        Map<Join, List<String>> selectItemsByTables = new HashMap<>();
+        if (sqlHolder.getFromItem() instanceof SubSelect) {
+            SubSelect subSelect = ((SubSelect) sqlHolder.getFromItem());
+            String subSelectStr = subSelect.toString();
+            Table subSelectResult;
+            if (subSelect.isUseBrackets()) {
+                subSelectResult = execute(subSelectStr.substring(1, subSelectStr.length() - 1));
+            } else {
+                subSelectResult = execute(subSelectStr);
+            }
+        } else {
+            int sourceCount = sqlHolder.getSelectItemMap().size();
+            List<SqlHolder> sqlHolders = new ArrayList<>(sourceCount);
+            for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : sqlHolder.getSelectItemMap().entrySet()) {
+                SqlHolder holder = new SqlHolder()
+                        .withSelectItems(fromItemListEntry.getValue())
+                        .withFromItem(fromItemListEntry.getKey());
 
-        for (Join join : sqlHolder.getJoins()) {
-            selectItemsByTables.put(join, new ArrayList<>());
+
+            }
         }
 
+        throw new UnsupportedOperationException("not implemented yet");
     }
 }

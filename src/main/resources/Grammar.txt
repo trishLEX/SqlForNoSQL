@@ -1,47 +1,3 @@
-//TODO добавить скобки в fromClause
-SelectStmt                  ::= SELECT AllDistinctClause? TargetList
-                                FROM FromList WhereClause?
-                                GroupByClause? HavingClause? OrderByClause? LimitClause? OffsetClause?
-                                ( UnionIntOps ALL? SelectStmt )?
-
-ColRefList                  ::= ColRef (',' ColRef)*
-
-ColRef                      ::= intConst //>=0 номер столбца
-                            |   ColId
-
-ColId                       ::= IDENT | '"' IDENT '"'
-
-TargetList                  ::= '*' | TargetExpr AliasClause? (',' TargetExpr AliasClause?)*
-
-TargetExpr                  ::= QualifiedName                //если есть аггрегатные функции, то должен содержаться или в них или в GROUP BY
-                            |   AVG   '(' QualifiedName ')'
-                            |   SUM   '(' QualifiedName ')'
-                            |   COUNT '(' QualifiedName | * ')'
-                            |   MIN   '(' QualifiedName ')'
-                            |   MAX   '(' QualifiedName ')'
-
-AliasClause                 ::= AS ColId
-                            |   ColId
-
-QualifiedName               ::= ColId ('.'ColId)*
-
-AllDistinctClause           ::= ALL
-                            |   DISTINCT (ON '(' ColRefList ')')?
-
-FromList                    ::= TableRef (',' TableRef)*
-
-TableRef                    ::= QualifiedName AliasClause? ( JoinType? JOIN TableRef JoinQual )?
-
-JoinType                    ::= FULL OUTER?
-                            |   LEFT OUTER?
-                            |   RIGHT OUTER?
-                            |   INNER
-
-JoinQual                    ::= USING '(' ColId (',' ColId)* ')'
-                            |   ON BoolExpr
-
-WhereClause                 ::= WHERE BoolExpr
-
 ArithmExpr                  ::= ArithmExprTerm ( {'+' | '-'} ArithmExprTerm )*
 ArithmExprTerm              ::= ArithmExprFactor ( {'*' | '/'} ArithmExprFactor )*
 ArithmExprFactor            ::= IDENT
@@ -87,23 +43,5 @@ ConstList                   ::= Const (',' Const)* //Const should be of one type
 
 //TODO first(StringConst) пересекается с first(DateTimeConst)
 Const                       ::= NumberConst | StringConst | BoolConst | DateTimeConst
-
-GroupByClause               ::= GROUP BY ColRef (',' ColRef)*
-
-HavingClause                ::= HAVING BoolExpr
-
-OrderByClause               ::= ORDER BY OrderByElem (',' OrderByElem)*
-
-OrderByElem                 ::= colRef AscDesc?
-
-AscDesc                     ::= ASC | DESC //ASC ON DEFAULT
-
-LimitClause                 ::= LIMIT intConst //intConst >= 0
-
-OffsetClause                ::= OFFSET intConst //intConst >= 0
-
-UnionIntOps                 ::= UNION
-                            |   INTERSECT
-                            |   EXCEPT
 
 BoolConst                   ::= TRUE | FALSE | NULL

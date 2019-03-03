@@ -7,7 +7,7 @@ import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
 import org.bson.Document;
-import ru.bmstu.sqlfornosql.SqlUtils;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;

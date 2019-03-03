@@ -16,11 +16,9 @@ public class MongoClient<T extends BsonDocument> {
     private static final Logger logger = LogManager.getLogger(MongoClient.class);
 
     private MongoCollection<T> collection;
-    private Class<T> clazz;
 
-    public MongoClient(MongoCollection<T> mongoCollection, Class<T> clazz) {
+    public MongoClient(MongoCollection<T> mongoCollection) {
         this.collection = mongoCollection;
-        this.clazz = clazz;
     }
 
     public Table executeQuery(MongoHolder query) {

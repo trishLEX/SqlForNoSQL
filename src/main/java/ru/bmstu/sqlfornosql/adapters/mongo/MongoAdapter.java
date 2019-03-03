@@ -3,8 +3,9 @@ package ru.bmstu.sqlfornosql.adapters.mongo;
 import com.google.common.base.Preconditions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 
-import static ru.bmstu.sqlfornosql.SqlUtils.fillSqlMeta;
+import static ru.bmstu.sqlfornosql.adapters.sql.SqlUtils.fillSqlMeta;
 
 public class MongoAdapter {
     private static final Logger logger = LogManager.getLogger(MongoAdapter.class);

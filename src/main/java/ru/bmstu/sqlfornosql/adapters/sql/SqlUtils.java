@@ -1,4 +1,4 @@
-package ru.bmstu.sqlfornosql;
+package ru.bmstu.sqlfornosql.adapters.sql;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -14,7 +14,6 @@ import net.sf.jsqlparser.statement.select.*;
 import org.bson.Document;
 import ru.bmstu.sqlfornosql.adapters.mongo.DateFunction;
 import ru.bmstu.sqlfornosql.adapters.mongo.ObjectIdFunction;
-import ru.bmstu.sqlfornosql.adapters.mongo.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.mongo.WhereClauseParser;
 
 import java.math.BigInteger;

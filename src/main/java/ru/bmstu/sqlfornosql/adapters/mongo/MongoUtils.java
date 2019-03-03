@@ -10,7 +10,7 @@ import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import org.bson.Document;
-import ru.bmstu.sqlfornosql.SqlUtils;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 
 import java.util.Collections;
 import java.util.List;
