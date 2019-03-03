@@ -199,7 +199,7 @@ public class SqlHolder {
             }
         }
 
-         return this;
+        return this;
     }
 
     private void fillVisibleColumnsAndTables(List<SubSelect> visibleColumns, List<Table> tables, FromItem fromItem) {

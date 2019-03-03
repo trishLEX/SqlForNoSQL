@@ -20,4 +20,5 @@ dependencies {
     compile group: 'org.mongodb', name: 'mongo-java-driver', version: '3.10.0'
     compile group: 'one.util', name: 'streamex', version: '0.6.8'
     compile group: 'com.joestelmach', name: 'natty', version: '0.13'
+    compile fileTree('libs') {include '*.jar'}
 }
