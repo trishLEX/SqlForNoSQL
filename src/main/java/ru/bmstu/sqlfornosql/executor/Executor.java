@@ -1,5 +1,7 @@
 package ru.bmstu.sqlfornosql.executor;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.mongodb.client.MongoDatabase;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
@@ -14,8 +16,29 @@ import ru.bmstu.sqlfornosql.model.Table;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Executor {
+    static final Pattern IDENT_REGEXP = Pattern.compile("([a-zA-Z]+[0-9a-zA-Z.]*)");
+
+    static final Set<String> FORBIDDEN_STRINGS = ImmutableSet.of(
+            "SELECT",
+            "AND",
+            "IN",
+            "BETWEEN",
+            "NOT",
+            "IS",
+            "DATE",
+            "TIME",
+            "TIMESTAMP",
+            "LIKE",
+            "TRUE",
+            "FALSE",
+            "NULL"
+    );
+
     public Table execute(String sql) {
         SqlHolder sqlHolder = SqlUtils.fillSqlMeta(sql);
         if (sqlHolder.getJoins().isEmpty()) {
@@ -85,11 +108,46 @@ public class Executor {
             int sourceCount = sqlHolder.getSelectItemMap().size();
             List<SqlHolder> sqlHolders = new ArrayList<>(sourceCount);
             for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : sqlHolder.getSelectItemMap().entrySet()) {
-                SqlHolder holder = new SqlHolder()
+                SqlHolder holder = new SqlHolder.SqlHolderBuilder()
                         .withSelectItems(fromItemListEntry.getValue())
-                        .withFromItem(fromItemListEntry.getKey());
+                        .withFromItem(fromItemListEntry.getKey()).build();
 
+                String query = holder.toString();
 
+                List<String> queryOrParts = new ArrayList<>();
+
+                Set<String> selectItemsStr = Sets.newHashSet(holder.getSelectItemsStrings());
+
+                if (sqlHolder.getWhereClause() != null) {
+                    String whereExpression = sqlHolder.getWhereClause().toString();
+                    String[] orParts = whereExpression.split("\\sOR\\s");
+                    for (String part : orParts) {
+                        Matcher matcher = IDENT_REGEXP.matcher(part.replaceAll("'.*'", ""));
+                        List<String> idents = new ArrayList<>();
+                        while (matcher.find()) {
+                            if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
+                                idents.add(matcher.group(1));
+                            }
+                        }
+
+                        if (selectItemsStr.containsAll(idents)) {
+                            queryOrParts.add(part);
+                        }
+                    }
+                }
+
+                query += " " + String.join(" OR ", queryOrParts);
+
+                if (!sqlHolder.getGroupBys().isEmpty()) {
+                    List<String> groupBys = new ArrayList<>();
+                    for (String groupByItem : sqlHolder.getGroupBys()) {
+                        if (selectItemsStr.contains(groupByItem)) {
+                            groupBys.add(groupByItem);
+                        }
+                    }
+
+                    //TODO
+                }
             }
         }
 

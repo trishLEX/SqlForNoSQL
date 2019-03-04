@@ -44,78 +44,86 @@ public class SqlHolder {
         joins = new ArrayList<>();
         groupBys = new ArrayList<>();
         orderByElements = new ArrayList<>();
+        selectItemMap = new HashMap<>();
     }
 
-    public SqlHolder withDistinct(boolean isDistinct) {
-        this.isDistinct = isDistinct;
-        return this;
-    }
+    public static class SqlHolderBuilder {
+        private SqlHolder holder;
 
-    public SqlHolder withCountAll(boolean isCountAll) {
-        this.isCountAll = isCountAll;
-        return this;
-    }
-
-    public SqlHolder withFromItem(FromItem fromItem) {
-        this.fromItem = fromItem;
-
-        if (fromItem instanceof Table) {
-            Table table = (Table) fromItem;
-            this.database = new DatabaseName(table.getFullyQualifiedName());
+        public SqlHolderBuilder() {
+            this.holder = new SqlHolder();
         }
 
-        return this;
-    }
+        public SqlHolderBuilder withDistinct(boolean isDistinct) {
+            holder.isDistinct = isDistinct;
+            return this;
+        }
 
-    public SqlHolder withLimit(long limit) {
-        this.limit = limit;
-        return this;
-    }
+        public SqlHolderBuilder withCountAll(boolean isCountAll) {
+            holder.isCountAll = isCountAll;
+            return this;
+        }
 
-    public SqlHolder withWhere(Expression whereClause) {
-        this.whereClause = whereClause;
-        return this;
-    }
+        public SqlHolderBuilder withFromItem(FromItem fromItem) {
+            holder.fromItem = fromItem;
 
-    public SqlHolder withSelectItems(List<SelectItem> selectItems) {
-        this.selectItems = selectItems;
-        this.selectItemsStrings = getSelectItemsStringFromSelectItems(selectItems);
-        return this;
-    }
+            if (fromItem instanceof Table) {
+                Table table = (Table) fromItem;
+                holder.database = new DatabaseName(table.getFullyQualifiedName());
+            }
 
-    private List<String> getSelectItemsStringFromSelectItems(List<SelectItem> selectItems) {
-        return selectItems.stream()
-                .map(this::getStringFromSelectItem)
-                .collect(Collectors.toList());
-    }
+            return this;
+        }
 
-    private String getStringFromSelectItem(SelectItem item) {
-        Expression expression = ((SelectExpressionItem) item).getExpression();
-        return SqlUtils.getStringValue(expression);
-    }
+        public SqlHolderBuilder withLimit(long limit) {
+            holder.limit = limit;
+            return this;
+        }
 
-    public SqlHolder withJoins(List<Join> joins) {
-        this.joins = joins;
-        return this;
-    }
+        public SqlHolderBuilder withWhere(Expression whereClause) {
+            holder.whereClause = whereClause;
+            return this;
+        }
 
-    public SqlHolder withGroupBy(List<String> groupBys) {
-        this.groupBys = groupBys;
-        return this;
-    }
+        public SqlHolderBuilder withSelectItems(List<SelectItem> selectItems) {
+            holder.selectItems = selectItems;
+            holder.selectItemsStrings = getSelectItemsStringFromSelectItems(selectItems);
+            return this;
+        }
 
-    public SqlHolder withHaving(Expression havingClause) {
-        this.havingClause = havingClause;
-        return this;
-    }
+        private List<String> getSelectItemsStringFromSelectItems(List<SelectItem> selectItems) {
+            return selectItems.stream()
+                    .map(this::getStringFromSelectItem)
+                    .collect(Collectors.toList());
+        }
 
-    public SqlHolder withOrderBy(List<OrderByElement> orderByElements) {
-        this.orderByElements = orderByElements;
-        return this;
-    }
+        private String getStringFromSelectItem(SelectItem item) {
+            Expression expression = ((SelectExpressionItem) item).getExpression();
+            return SqlUtils.getStringValue(expression);
+        }
 
-    //TODO method is not ready
-    public SqlHolder build() {
+        public SqlHolderBuilder withJoins(List<Join> joins) {
+            holder.joins = joins;
+            return this;
+        }
+
+        public SqlHolderBuilder withGroupBy(List<String> groupBys) {
+            holder.groupBys = groupBys;
+            return this;
+        }
+
+        public SqlHolderBuilder withHaving(Expression havingClause) {
+            holder.havingClause = havingClause;
+            return this;
+        }
+
+        public SqlHolderBuilder withOrderBy(List<OrderByElement> orderByElements) {
+            holder.orderByElements = orderByElements;
+            return this;
+        }
+
+        //TODO method is not ready
+        public SqlHolder build() {
 //        List<String> usedDbs = new ArrayList<>();
 //        if (fromItem instanceof Table) {
 //            Table table = (Table) fromItem;
@@ -133,111 +141,112 @@ public class SqlHolder {
 //                    .forEach(fromItem -> usedDbs.addAll(getTableOfFromItem(fromItem)));
 //        }
 
-        List<SubSelect> subSelects = new ArrayList<>();
-        List<Table> tables = new ArrayList<>();
-        fillVisibleColumnsAndTables(subSelects, tables, fromItem);
+            List<SubSelect> subSelects = new ArrayList<>();
+            List<Table> tables = new ArrayList<>();
+            fillVisibleColumnsAndTables(subSelects, tables, holder.fromItem);
 
-        for (Join join : joins) {
-            FromItem fromItem = join.getRightItem();
-            fillVisibleColumnsAndTables(subSelects, tables, fromItem);
-        }
+            for (Join join : holder.joins) {
+                FromItem fromItem = join.getRightItem();
+                fillVisibleColumnsAndTables(subSelects, tables, fromItem);
+            }
 
-        Map<SelectItem, SubSelect> columnToSubSelect = new HashMap<>();
+            Map<SelectItem, SubSelect> columnToSubSelect = new HashMap<>();
 
-        List<SelectItem> visibleColumns = subSelects.stream()
-                .flatMap(subSelect -> {
-                    PlainSelect body = (PlainSelect) subSelect.getSelectBody();
-                    List<SelectItem> selectItemsStr = body.getSelectItems();
-                    for (SelectItem item : selectItemsStr) {
-                        if (columnToSubSelect.containsKey(item)) {
-                            throw new IllegalStateException("Column name '" + item + "' is clashed");
-                        } else {
-                            columnToSubSelect.put(item, subSelect);
+            List<SelectItem> visibleColumns = subSelects.stream()
+                    .flatMap(subSelect -> {
+                        PlainSelect body = (PlainSelect) subSelect.getSelectBody();
+                        List<SelectItem> selectItemsStr = body.getSelectItems();
+                        for (SelectItem item : selectItemsStr) {
+                            if (columnToSubSelect.containsKey(item)) {
+                                throw new IllegalStateException("Column name '" + item + "' is clashed");
+                            } else {
+                                columnToSubSelect.put(item, subSelect);
+                            }
                         }
+
+                        return selectItemsStr.stream();
+                    })
+                    .collect(Collectors.toList());
+
+            for (SelectItem column : holder.selectItems) {
+                boolean existsInVisibleColumns = visibleColumns.contains(column);
+                if (existsInVisibleColumns) {
+                    SubSelect subSelect = columnToSubSelect.get(column);
+                    if (holder.selectItemMap.containsKey(subSelect)) {
+                        holder.selectItemMap.get(subSelect).add(column);
+                    } else {
+                        holder.selectItemMap.put(subSelect, Lists.newArrayList(column));
                     }
+                }
 
-                    return selectItemsStr.stream();
-                })
-                .collect(Collectors.toList());
+                String columnStr = getStringFromSelectItem(column);
+                String columnPrefix = columnStr.substring(0, columnStr.lastIndexOf('.'));
+                int count = tables
+                        .stream()
+                        .map(table -> {
+                            if (table.getFullyQualifiedName().endsWith(columnPrefix)) {
+                                if (holder.selectItemMap.containsKey(table)) {
+                                    holder.selectItemMap.get(table).add(column);
+                                } else {
+                                    holder.selectItemMap.put(table, Lists.newArrayList(column));
+                                }
+                                return 1;
+                            } else {
+                                return 0;
+                            }
+                        })
+                        .reduce(0, (x, y) -> x + y);
+                if (count > 1) {
+                    throw new IllegalArgumentException("Column '" + column + "' clashes");
+                }
 
-        selectItemMap = new HashMap<>();
-
-        for (SelectItem column : selectItems) {
-            boolean existsInVisibleColumns = visibleColumns.contains(column);
-            if (existsInVisibleColumns) {
-                SubSelect subSelect = columnToSubSelect.get(column);
-                if (selectItemMap.containsKey(subSelect)) {
-                    selectItemMap.get(subSelect).add(column);
-                } else {
-                    selectItemMap.put(subSelect, Lists.newArrayList(column));
+                if (existsInVisibleColumns == (count == 1)) {
+                    throw new IllegalArgumentException("Column '" + column + "' clashes");
                 }
             }
 
-            String columnStr = getStringFromSelectItem(column);
-            String columnPrefix = columnStr.substring(0, columnStr.lastIndexOf('.'));
-            int count = tables
-                    .stream()
-                    .map(table -> {
-                        if (table.getFullyQualifiedName().endsWith(columnPrefix)) {
-                            if (selectItemMap.containsKey(table)) {
-                                selectItemMap.get(table).add(column);
-                            } else {
-                                selectItemMap.put(table, Lists.newArrayList(column));
-                            }
-                            return 1;
-                        } else {
-                            return 0;
-                        }
-                    })
-                    .reduce(0, (x, y) -> x + y);
-            if (count > 1) {
-                throw new IllegalArgumentException("Column '" + column + "' clashes");
-            }
+            return holder;
+        }
 
-            if (existsInVisibleColumns == (count == 1)) {
-                throw new IllegalArgumentException("Column '" + column + "' clashes");
+        private void fillVisibleColumnsAndTables(List<SubSelect> visibleColumns, List<Table> tables,
+                FromItem fromItem)
+        {
+            if (fromItem instanceof SubSelect) {
+                SubSelect select = (SubSelect) fromItem;
+                visibleColumns.add(select);
+            } else if (fromItem instanceof Table) {
+                Table table = (Table) fromItem;
+                tables.add(table);
+            } else {
+                throw new IllegalStateException("Can't determine type of fromItem: " + fromItem);
             }
         }
 
-        return this;
-    }
+        private List<String> getAllUsedDbs(PlainSelect select) {
+            List<String> res = new ArrayList<>();
 
-    private void fillVisibleColumnsAndTables(List<SubSelect> visibleColumns, List<Table> tables, FromItem fromItem) {
-        if (fromItem instanceof SubSelect) {
-            SubSelect select = (SubSelect) fromItem;
-            visibleColumns.add(select);
-        } else if (fromItem instanceof Table) {
-            Table table = (Table) fromItem;
-            tables.add(table);
-        } else {
-            throw new IllegalStateException("Can't determine type of fromItem: " + fromItem);
-        }
-    }
+            if (!select.getJoins().isEmpty()) {
+                select.getJoins()
+                        .stream()
+                        .map(Join::getRightItem)
+                        .forEach(fromItem -> res.addAll(getTableOfFromItem(fromItem)));
+            }
 
-    private List<String> getAllUsedDbs(PlainSelect select) {
-        List<String> res = new ArrayList<>();
-
-        if (!select.getJoins().isEmpty()) {
-            select.getJoins()
-                    .stream()
-                    .map(Join::getRightItem)
-                    .forEach(fromItem -> res.addAll(getTableOfFromItem(fromItem)));
+            res.addAll(getTableOfFromItem(select.getFromItem()));
+            return res;
         }
 
-        res.addAll(getTableOfFromItem(select.getFromItem()));
-        return res;
-    }
-
-    private List<String> getTableOfFromItem(FromItem fromItem) {
-        if (fromItem instanceof Table) {
-            Table table = (Table) fromItem;
-            return Collections.singletonList(table.getFullyQualifiedName());
-        } else if (fromItem instanceof SubSelect) {
-            SubSelect subSelect = (SubSelect) fromItem;
-            PlainSelect plainSelect = (PlainSelect) subSelect.getSelectBody();
-            return getAllUsedDbs(plainSelect);
-        } else {
-            throw new IllegalArgumentException("Illegal type of fromItem");
+        private List<String> getTableOfFromItem(FromItem fromItem) {
+            if (fromItem instanceof Table) {
+                Table table = (Table) fromItem;
+                return Collections.singletonList(table.getFullyQualifiedName());
+            } else if (fromItem instanceof SubSelect) {
+                SubSelect subSelect = (SubSelect) fromItem;
+                PlainSelect plainSelect = (PlainSelect) subSelect.getSelectBody();
+                return getAllUsedDbs(plainSelect);
+            } else {
+                throw new IllegalArgumentException("Illegal type of fromItem");
+            }
         }
     }
 

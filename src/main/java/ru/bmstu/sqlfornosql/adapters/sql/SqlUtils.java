@@ -240,7 +240,7 @@ public class SqlUtils {
                 havingClause = plainSelect.getHaving();
                 orderByElements = plainSelect.getOrderByElements();
 
-                return new SqlHolder()
+                return new SqlHolder.SqlHolderBuilder()
                         .withDistinct(isDistinct)
                         .withCountAll(isCountAll)
                         .withFromItem(fromItem)
@@ -250,7 +250,8 @@ public class SqlUtils {
                         .withJoins(joins)
                         .withGroupBy(groupBys)
                         .withHaving(havingClause)
-                        .withOrderBy(orderByElements);
+                        .withOrderBy(orderByElements)
+                        .build();
             } else {
                 throw new IllegalArgumentException("Only select statements are supported");
             }
