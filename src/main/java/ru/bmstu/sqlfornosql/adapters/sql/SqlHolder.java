@@ -64,12 +64,14 @@ public class SqlHolder {
             return this;
         }
 
-        public SqlHolderBuilder withFromItem(FromItem fromItem) {
-            holder.fromItem = fromItem;
+        public SqlHolderBuilder withFromItem(@Nullable FromItem fromItem) {
+            if (fromItem != null) {
+                holder.fromItem = fromItem;
 
-            if (fromItem instanceof Table) {
-                Table table = (Table) fromItem;
-                holder.database = new DatabaseName(table.getFullyQualifiedName());
+                if (fromItem instanceof Table) {
+                    Table table = (Table) fromItem;
+                    holder.database = new DatabaseName(table.getFullyQualifiedName());
+                }
             }
 
             return this;
@@ -80,14 +82,18 @@ public class SqlHolder {
             return this;
         }
 
-        public SqlHolderBuilder withWhere(Expression whereClause) {
-            holder.whereClause = whereClause;
+        public SqlHolderBuilder withWhere(@Nullable Expression whereClause) {
+            if (whereClause != null) {
+                holder.whereClause = whereClause;
+            }
             return this;
         }
 
-        public SqlHolderBuilder withSelectItems(List<SelectItem> selectItems) {
-            holder.selectItems = selectItems;
-            holder.selectItemsStrings = getSelectItemsStringFromSelectItems(selectItems);
+        public SqlHolderBuilder withSelectItems(@Nullable List<SelectItem> selectItems) {
+            if (selectItems != null) {
+                holder.selectItems = selectItems;
+                holder.selectItemsStrings = getSelectItemsStringFromSelectItems(selectItems);
+            }
             return this;
         }
 
@@ -98,49 +104,44 @@ public class SqlHolder {
         }
 
         private String getStringFromSelectItem(SelectItem item) {
-            Expression expression = ((SelectExpressionItem) item).getExpression();
-            return SqlUtils.getStringValue(expression);
+            if (item instanceof AllColumns) {
+                return "*";
+            } else {
+                Expression expression = ((SelectExpressionItem) item).getExpression();
+                return SqlUtils.getStringValue(expression);
+            }
         }
 
-        public SqlHolderBuilder withJoins(List<Join> joins) {
-            holder.joins = joins;
+        public SqlHolderBuilder withJoins(@Nullable List<Join> joins) {
+            if (joins != null) {
+                holder.joins = joins;
+            }
             return this;
         }
 
-        public SqlHolderBuilder withGroupBy(List<String> groupBys) {
-            holder.groupBys = groupBys;
+        public SqlHolderBuilder withGroupBy(@Nullable List<String> groupBys) {
+            if (groupBys != null) {
+                holder.groupBys = groupBys;
+            }
             return this;
         }
 
-        public SqlHolderBuilder withHaving(Expression havingClause) {
-            holder.havingClause = havingClause;
+        public SqlHolderBuilder withHaving(@Nullable Expression havingClause) {
+            if (havingClause != null) {
+                holder.havingClause = havingClause;
+            }
             return this;
         }
 
-        public SqlHolderBuilder withOrderBy(List<OrderByElement> orderByElements) {
-            holder.orderByElements = orderByElements;
+        public SqlHolderBuilder withOrderBy(@Nullable List<OrderByElement> orderByElements) {
+            if (orderByElements != null) {
+                holder.orderByElements = orderByElements;
+            }
             return this;
         }
 
         //TODO method is not ready
         public SqlHolder build() {
-//        List<String> usedDbs = new ArrayList<>();
-//        if (fromItem instanceof Table) {
-//            Table table = (Table) fromItem;
-//            usedDbs.add(table.getFullyQualifiedName());
-//        } else if (fromItem instanceof SubSelect) {
-//            SubSelect subSelect = (SubSelect) fromItem;
-//            PlainSelect select = ((PlainSelect) subSelect.getSelectBody());
-//            usedDbs.addAll(getAllUsedDbs(select));
-//        }
-//
-//        if (!joins.isEmpty()) {
-//            joins
-//                    .stream()
-//                    .map(Join::getRightItem)
-//                    .forEach(fromItem -> usedDbs.addAll(getTableOfFromItem(fromItem)));
-//        }
-
             List<SubSelect> subSelects = new ArrayList<>();
             List<Table> tables = new ArrayList<>();
             if (holder.fromItem != null) {
@@ -181,29 +182,35 @@ public class SqlHolder {
                     }
                 }
 
-                String columnStr = getStringFromSelectItem(column);
-                String columnPrefix = columnStr.substring(0, columnStr.lastIndexOf('.'));
-                int count = tables
-                        .stream()
-                        .map(table -> {
-                            if (table.getFullyQualifiedName().endsWith(columnPrefix)) {
-                                if (holder.selectItemMap.containsKey(table)) {
-                                    holder.selectItemMap.get(table).add(column);
+                if (!holder.selectItemsStrings.equals(Collections.singletonList("*"))) {
+                    String columnStr = getStringFromSelectItem(column);
+                    String columnPrefix = columnStr.substring(0, columnStr.lastIndexOf('.'));
+                    int count = tables
+                            .stream()
+                            .map(table -> {
+                                if (table.getFullyQualifiedName().endsWith(columnPrefix)) {
+                                    if (holder.selectItemMap.containsKey(table)) {
+                                        holder.selectItemMap.get(table).add(column);
+                                    } else {
+                                        holder.selectItemMap.put(table, Lists.newArrayList(column));
+                                    }
+                                    return 1;
                                 } else {
-                                    holder.selectItemMap.put(table, Lists.newArrayList(column));
+                                    return 0;
                                 }
-                                return 1;
-                            } else {
-                                return 0;
-                            }
-                        })
-                        .reduce(0, (x, y) -> x + y);
-                if (count > 1) {
-                    throw new IllegalArgumentException("Column '" + column + "' clashes");
-                }
+                            })
+                            .reduce(0, (x, y) -> x + y);
+                    if (count > 1) {
+                        throw new IllegalArgumentException("Column '" + column + "' clashes");
+                    }
 
-                if (existsInVisibleColumns == (count == 1)) {
-                    throw new IllegalArgumentException("Column '" + column + "' clashes");
+                    if (existsInVisibleColumns == (count == 1)) {
+                        throw new IllegalArgumentException("Column '" + column + "' clashes");
+                    }
+                } else {
+                    for (Table table : tables) {
+                        holder.selectItemMap.put(table, holder.selectItems);
+                    }
                 }
             }
 
@@ -342,7 +349,7 @@ public class SqlHolder {
 
         if (fromItem != null) {
             sb.append(" FROM ");
-            sb.append(((Table) fromItem).getName());
+            sb.append(((Table) fromItem).getFullyQualifiedName());
         }
 
         for (Join join : joins) {

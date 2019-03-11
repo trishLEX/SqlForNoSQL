@@ -55,7 +55,7 @@ public class Executor {
      */
     //TODO здесь fromItem может быть подзапросом - это нужно обработать
     private Table simpleSelect(SqlHolder sqlHolder) {
-        if (sqlHolder.getFromItem() instanceof Table) {
+        if (sqlHolder.getFromItem() instanceof net.sf.jsqlparser.schema.Table) {
             switch (sqlHolder.getDatabase().getDbType()) {
                 case POSTGRES:
                     try (PostgresClient client = new PostgresClient("localhost", 5032, "postgres", "0212", "postgres")) {
@@ -99,6 +99,7 @@ public class Executor {
         Map<FromItem, Table> resultParts = new HashMap<>();
         int sourceCount = sqlHolder.getSelectItemMap().size();
         List<SqlHolder> sqlHolders = new ArrayList<>(sourceCount);
+        List<String> queries = new ArrayList<>();
         for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : sqlHolder.getSelectItemMap().entrySet()) {
             SqlHolder holder = new SqlHolder.SqlHolderBuilder()
                     .withSelectItems(fromItemListEntry.getValue())
@@ -184,9 +185,13 @@ public class Executor {
                 query += " ORDER BY " + String.join(" ,", orderBys);
             }
 
-            Table result = execute(query);
-            resultParts.put(fromItemListEntry.getKey(), result);
+            queries.add(query);
+
+            //Table result = execute(query);
+            //resultParts.put(fromItemListEntry.getKey(), result);
         }
+
+        System.out.println(queries);
 
         throw new UnsupportedOperationException("not implemented yet");
     }

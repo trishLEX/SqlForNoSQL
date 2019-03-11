@@ -16,4 +16,11 @@ public class ExecutorTest {
             }
         }
     }
+
+    @Test
+    public void simpleSelectTestMongo() {
+        String query = "SELECT * FROM mongodb.db.collection";
+        Executor executor = new Executor();
+        executor.execute(query);
+    }
 }
