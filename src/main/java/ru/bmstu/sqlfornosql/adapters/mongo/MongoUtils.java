@@ -48,10 +48,16 @@ public class MongoUtils {
         for (SelectItem selectItem : nonFunctionItems) {
             Column column = (Column) ((SelectExpressionItem) selectItem).getExpression();
             String columnName = SqlUtils.getStringValue(column);
+            if (columnName.contains(".")) {
+                columnName = columnName.substring(columnName.lastIndexOf('.') + 1);
+            }
             idDocument.put(columnName,"$" + columnName);
         }
 
         for (String groupBy : mongoHolder.getGroupBys()) {
+            if (groupBy.contains(".")) {
+                groupBy = groupBy.substring(groupBy.lastIndexOf('.') + 1);
+            }
             idDocument.put(groupBy, "$" + groupBy);
         }
 
@@ -71,15 +77,18 @@ public class MongoUtils {
                         .getParameters()
                         .getExpressions()
                         .stream()
-                        .map(SqlUtils::getStringValue)
+                        .map(param -> SqlUtils.getStringValue(param, true))
                         .collect(Collectors.toList());
 
         if (parameters.size() > 1) {
             throw new IllegalStateException(function.getName()+" function can only have one parameter");
         }
 
-        String field = parameters.size() > 0 ?
-                Iterables.get(parameters, 0).replaceAll("\\.","_") : null;
+        String field = !parameters.isEmpty() ? Iterables.get(parameters, 0).replaceAll("\\.","_") : null;
+
+        if (field != null && field.contains(".")) {
+            field = field.substring(field.lastIndexOf('.') + 1);
+        }
 
         mongoHolder.setHasAggregateFunctions(true);
 
@@ -113,15 +122,15 @@ public class MongoUtils {
                 || sqlName.startsWith("avg(")
                 || sqlName.startsWith("min(")
                 || sqlName.startsWith("max(")) {
-            return sqlName.substring(0, 3) + "_" + sqlName.substring(4, sqlName.length() - 1);
+            return sqlName.substring(0, 3) + "_" + getNonQualifiedName(sqlName.substring(4, sqlName.length() - 1));
         } else if (sqlName.startsWith("count(")) {
             if (sqlName.contains("*")){
                 return "count";
             } else {
-                return sqlName.substring(0, 5) + "_" + sqlName.substring(6, sqlName.length() - 1);
+                return sqlName.substring(0, 5) + "_" + getNonQualifiedName(sqlName.substring(6, sqlName.length() - 1));
             }
         } else {
-            return sqlName;
+            return getNonQualifiedName(sqlName);
         }
     }
 
@@ -154,7 +163,7 @@ public class MongoUtils {
         Document sortItems = new Document();
         for (OrderByElement orderByElement : orderByElements) {
             if (nonFunctionItems.contains(orderByElement)) {
-                sortItems.put(SqlUtils.getStringValue(orderByElement.getExpression()), orderByElement.isAsc() ? 1 : -1);
+                sortItems.put(getNonQualifiedName(SqlUtils.getStringValue(orderByElement.getExpression())), orderByElement.isAsc() ? 1 : -1);
             } else {
                 Function function = (Function) orderByElement.getExpression();
                 Document parseFunctionDocument = new Document();
@@ -164,11 +173,19 @@ public class MongoUtils {
                 if (!hasAggregationFn) {
                     mongoHolder.setHasAggregateFunctions(false);
                 }
-                sortItems.put(Iterables.get(parseFunctionDocument.keySet(),0),orderByElement.isAsc() ? 1 : -1);
+                sortItems.put(getNonQualifiedName(Iterables.get(parseFunctionDocument.keySet(),0)), orderByElement.isAsc() ? 1 : -1);
             }
         }
 
         return sortItems;
+    }
+
+    public static String getNonQualifiedName(String qualifiedName) {
+        if (qualifiedName.contains(".")) {
+            return qualifiedName.substring(qualifiedName.lastIndexOf('.') + 1);
+        } else {
+            return qualifiedName;
+        }
     }
 
     public static String normalizeColumnName(String mongoColumnName) {

@@ -102,6 +102,8 @@ public class MongoMapper {
             row.add(key, value.asString().getValue(), RowType.STRING);
         } else if (value.isNull()) {
             row.add(key, null, RowType.NULL);
+        } else if (value.isObjectId()) {
+            row.add(key, value.asObjectId().toString(), RowType.STRING);
         } else {
             throw new IllegalArgumentException("Unsupported type of value");
         }

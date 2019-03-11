@@ -184,7 +184,12 @@ public class SqlHolder {
 
                 if (!holder.selectItemsStrings.equals(Collections.singletonList("*"))) {
                     String columnStr = getStringFromSelectItem(column);
-                    String columnPrefix = columnStr.substring(0, columnStr.lastIndexOf('.'));
+                    String columnPrefix;
+                    if (columnStr.contains(".")) {
+                        columnPrefix = columnStr.substring(0, columnStr.lastIndexOf('.'));
+                    } else {
+                        columnPrefix = columnStr;
+                    }
                     int count = tables
                             .stream()
                             .map(table -> {
@@ -204,7 +209,7 @@ public class SqlHolder {
                         throw new IllegalArgumentException("Column '" + column + "' clashes");
                     }
 
-                    if (existsInVisibleColumns == (count == 1)) {
+                    if (existsInVisibleColumns == (count == 1) && !holder.joins.isEmpty()) {
                         throw new IllegalArgumentException("Column '" + column + "' clashes");
                     }
                 } else {

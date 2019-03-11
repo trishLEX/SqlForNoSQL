@@ -43,8 +43,7 @@ public class Executor {
         if (sqlHolder.getJoins().isEmpty()) {
             return simpleSelect(sqlHolder);
         } else {
-            //TODO
-            throw new UnsupportedOperationException("Not implemented yet");
+            return selectWithJoins(sqlHolder);
         }
     }
 

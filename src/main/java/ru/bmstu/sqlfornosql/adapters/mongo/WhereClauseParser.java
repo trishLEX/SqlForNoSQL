@@ -12,6 +12,8 @@ import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static ru.bmstu.sqlfornosql.adapters.mongo.MongoUtils.getNonQualifiedName;
+
 public class WhereClauseParser {
     private WhereClauseParser() {
         //utility class
@@ -23,11 +25,14 @@ public class WhereClauseParser {
             ObjectIdFunction objectIdFunction = SqlUtils.isObjectIdFunction(incomingExpression);
             if (dateFunction != null) {
                 query.put(
-                        dateFunction.getColumn(),
+                        getNonQualifiedName(dateFunction.getColumn()),
                         new Document(dateFunction.getComparisonExpression(), dateFunction.getDate())
                 );
             } else if (objectIdFunction != null) {
-                query.put(objectIdFunction.getColumn(), objectIdFunction.toDocument());
+                query.put(
+                        getNonQualifiedName(objectIdFunction.getColumn()),
+                        objectIdFunction.toDocument()
+                );
             } else if (incomingExpression instanceof EqualsTo) {
                 final Expression leftExpression = ((EqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();
@@ -60,7 +65,7 @@ public class WhereClauseParser {
                     );
                 } else {
                     query.put(
-                            SqlUtils.getStringValue(leftExpression),
+                            SqlUtils.getStringValue(leftExpression, true),
                             new Document("$ne", parseExpression(new Document(), rightExpression, leftExpression))
                     );
                 }
@@ -88,27 +93,27 @@ public class WhereClauseParser {
                 || ((LikeExpression) incomingExpression).getRightExpression() instanceof Column))
         {
             LikeExpression likeExpression = (LikeExpression) incomingExpression;
-            String stringValueLeftSide = SqlUtils.getStringValue(likeExpression.getLeftExpression());
-            String stringValueRightSide = SqlUtils.getStringValue(likeExpression.getRightExpression());
+            String stringValueLeftSide = SqlUtils.getStringValue(likeExpression.getLeftExpression(), true);
+            String stringValueRightSide = SqlUtils.getStringValue(likeExpression.getRightExpression(), true);
 
             Document document = new Document("$regex", "^" + SqlUtils.replaceRegexCharacters(stringValueRightSide) + "$");
             if (likeExpression.isNot()) {
                 throw new IllegalStateException("NOT LIKE queries not supported");
             } else {
-                document = new Document(stringValueLeftSide,document);
+                document = new Document(stringValueLeftSide, document);
             }
             query.putAll(document);
         } else if(incomingExpression instanceof IsNullExpression) {
             IsNullExpression isNullExpression = (IsNullExpression) incomingExpression;
-            query.put(SqlUtils.getStringValue(isNullExpression.getLeftExpression()), new Document("$exists", isNullExpression.isNot()));
+            query.put(SqlUtils.getStringValue(isNullExpression.getLeftExpression(), true), new Document("$exists", isNullExpression.isNot()));
         } else if(incomingExpression instanceof InExpression) {
             InExpression inExpression = (InExpression) incomingExpression;
             Expression leftExpression = ((InExpression) incomingExpression).getLeftExpression();
-            String leftExpressionAsString = SqlUtils.getStringValue(leftExpression);
+            String leftExpressionAsString = SqlUtils.getStringValue(leftExpression, true);
             ObjectIdFunction objectIdFunction = SqlUtils.isObjectIdFunction(incomingExpression);
 
             if (objectIdFunction != null) {
-                query.put(objectIdFunction.getColumn(), objectIdFunction.toDocument());
+                query.put(getNonQualifiedName(objectIdFunction.getColumn()), objectIdFunction.toDocument());
             } else {
                 List<Object> objectList = ((ExpressionList) inExpression.getRightItemsList())
                         .getExpressions()
@@ -146,11 +151,11 @@ public class WhereClauseParser {
             return new Document(SqlUtils.getStringValue(expression), new Document("$ne", true));
         } else if (incomingExpression instanceof Function) {
             Function function = ((Function)incomingExpression);
-            query.put("$" + function.getName(), SqlUtils.parseFunctionArguments(function.getParameters()));
+            query.put("$" + function.getName(), SqlUtils.parseFunctionArguments(function.getParameters(), true));
         } else if (otherSide == null) {
             return new Document(SqlUtils.getStringValue(incomingExpression), true);
         } else {
-            return SqlUtils.getValue(incomingExpression,otherSide);
+            return SqlUtils.getValue(incomingExpression, otherSide, true);
         }
 
         return query;

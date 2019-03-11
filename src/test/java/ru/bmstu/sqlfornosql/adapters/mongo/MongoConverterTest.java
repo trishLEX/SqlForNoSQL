@@ -66,22 +66,28 @@ public class MongoConverterTest {
         System.out.println(client.executeQuery(adapter.translate("SELECT sum(intField), dateField FROM test GROUP BY intField")));
     }
 
-    @Test
+    @Test //TODO works wrong
     public void simpleSelectGroupByHaving() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT sum(intField) FROM test GROUP BY intField HAVING intField < 500")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT sum(test.intField) FROM mongodb.test.test GROUP BY test.intField HAVING test.intField < 500")));
     }
 
     @Test
     public void simpleSelectGroupByOrderBy() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT intField FROM test GROUP BY intField ORDER BY intField")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT test.intField FROM mongodb.test.test GROUP BY test.intField ORDER BY test.intField")));
     }
 
     @Test
     public void simpleSelectGroupByOrderByOrderBy() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT max(dateField) FROM test GROUP BY dateField ORDER BY intField")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT max(test.dateField) FROM mongodb.test.test GROUP BY test.dateField ORDER BY test.intField")));
+    }
+
+    @Test
+    public void selectWithQualifiedName() {
+        MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
+        System.out.println(client.executeQuery(adapter.translate("SELECT test.intField FROM mongodb.test.test")));
     }
 
     @After

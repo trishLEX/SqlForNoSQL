@@ -65,11 +65,16 @@ public class SqlUtils {
         return -1;
     }
 
-    public static String getStringValue(Expression expression) {
+    public static String getStringValue(Expression expression, boolean getNonQualifiedName) {
         if (expression instanceof StringValue) {
             return ((StringValue)expression).getValue();
         } else if (expression instanceof Column) {
             String columnName = expression.toString();
+
+            if (getNonQualifiedName && columnName.contains(".")) {
+                columnName = columnName.substring(columnName.lastIndexOf('.') + 1);
+            }
+
             Matcher matcher = SURROUNDED_IN_QUOTES.matcher(columnName);
             if (matcher.matches()) {
                 return matcher.group(1);
@@ -77,6 +82,10 @@ public class SqlUtils {
             return columnName;
         }
         return expression.toString();
+    }
+
+    public static String getStringValue(Expression expression) {
+        return getStringValue(expression, false);
     }
 
     public static List<String> getGroupBy(List<Expression> groupByColumnReferences) {
@@ -167,24 +176,27 @@ public class SqlUtils {
         return sb.toString();
     }
 
-    public static Object parseFunctionArguments(ExpressionList parameters)
-    {
+    public static Object parseFunctionArguments(ExpressionList parameters, boolean getNonQualifiedName) {
         if (parameters == null) {
             return null;
-        } else if (parameters.getExpressions().size()==1) {
-            return getStringValue(parameters.getExpressions().get(0));
+        } else if (parameters.getExpressions().size() == 1) {
+            return getStringValue(parameters.getExpressions().get(0), getNonQualifiedName);
         } else {
             return Lists.newArrayList(parameters.getExpressions().stream().map(expression -> {
                 try {
                     return getValue(expression, null);
                 } catch (IllegalStateException e) {
-                    return getStringValue(expression);
+                    return getStringValue(expression, getNonQualifiedName);
                 }
             }).collect(Collectors.toList()));
         }
     }
 
-    public static Object getValue(Expression incomingExpression, Expression otherSide) {
+    public static Object parseFunctionArguments(ExpressionList parameters) {
+        return parseFunctionArguments(parameters, false);
+    }
+
+    public static Object getValue(Expression incomingExpression, Expression otherSide, boolean getNonQualifiedName) {
         if (incomingExpression instanceof LongValue) {
             return normalizeValue((((LongValue)incomingExpression).getValue()));
         } else if (incomingExpression instanceof SignedExpression) {
@@ -192,10 +204,14 @@ public class SqlUtils {
         } else if (incomingExpression instanceof StringValue) {
             return normalizeValue((((StringValue)incomingExpression).getValue()));
         } else if (incomingExpression instanceof Column) {
-            return normalizeValue(getStringValue(incomingExpression));
+            return normalizeValue(getStringValue(incomingExpression, getNonQualifiedName));
         } else {
             throw new IllegalStateException("can not parseNaturalLanguageDate: " + incomingExpression.toString());
         }
+    }
+
+    public static Object getValue(Expression incomingExpression, Expression otherSide) {
+        return getValue(incomingExpression, otherSide, false);
     }
 
     public static Object normalizeValue(Object value) {

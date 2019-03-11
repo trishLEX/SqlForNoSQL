@@ -51,21 +51,17 @@ public class MongoHolder {
                 .collect(Collectors.toList());
 
         if (sqlHolder.isDistinct()) {
-            //if (sqlHolder.getSelectItems().size() > 1 || !sqlHolder.getGroupBys().isEmpty()) {
-                mongoHolder.groupBys = StreamEx.of(sqlHolder.getSelectItems().stream())
-                        .map(Object::toString)
+                mongoHolder.groupBys = StreamEx.of(sqlHolder.getSelectItemsStrings().stream())
                         .append(sqlHolder.getGroupBys().stream())
+                        .map(name -> name.contains(".") ? name.substring(name.lastIndexOf('.') + 1) : name)
                         .collect(Collectors.toList());
 
                 mongoHolder.projection = MongoUtils.createProjectionsFromSelectItems(sqlHolder.getSelectItems(), mongoHolder);
-//            } else {
-//                Document mongoProjection = new Document();
-//                mongoProjection.put(sqlHolder.getSelectItems().get(0).toString(), 1);
-//                mongoHolder.projection = mongoProjection;
-//                mongoHolder.distinct = true;
-//            }
         } else if (!sqlHolder.getGroupBys().isEmpty()) {
-            mongoHolder.groupBys = sqlHolder.getGroupBys();
+            mongoHolder.groupBys = sqlHolder.getGroupBys()
+                    .stream()
+                    .map(name -> name.contains(".") ? name.substring(name.lastIndexOf('.') + 1) : name)
+                    .collect(Collectors.toList());
             mongoHolder.projection = MongoUtils.createProjectionsFromSelectItems(sqlHolder.getSelectItems(), mongoHolder);
         } else if (sqlHolder.isCountAll()) {
             mongoHolder.countAll = true;
@@ -73,7 +69,14 @@ public class MongoHolder {
             Document mongoProjection = new Document();
             mongoProjection.put(MONGO_ID, 0);
 
-            sqlHolder.getSelectItems().forEach(item -> mongoProjection.put(item.toString(), 1));
+            sqlHolder.getSelectItems().forEach(item -> {
+                String itemStr = item.toString();
+                if (itemStr.contains(".")) {
+                    mongoProjection.put(itemStr.substring(itemStr.lastIndexOf('.') + 1), 1);
+                } else {
+                    mongoProjection.put(item.toString(), 1);
+                }
+            });
 
             mongoHolder.projection = mongoProjection;
         }
