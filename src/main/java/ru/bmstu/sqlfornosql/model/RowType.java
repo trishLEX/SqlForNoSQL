@@ -5,5 +5,6 @@ public enum RowType {
     DATE,
     DOUBLE,
     INT,
-    STRING
+    STRING,
+    NULL
 }

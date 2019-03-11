@@ -22,6 +22,7 @@ public class MongoClient<T extends BsonDocument> {
     }
 
     public Table executeQuery(MongoHolder query) {
+        //TODO возможно стоит сделать его синглтоном
         MongoMapper mapper = new MongoMapper();
         //TODO distinct больше не ставится в true, вместо него выполянется group by => данная ветка бесполезна
         if (query.isDistinct()) {

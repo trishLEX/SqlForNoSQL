@@ -100,6 +100,8 @@ public class MongoMapper {
             row.add(key, value.asInt32().getValue(), RowType.INT);
         } else if (value.isString()) {
             row.add(key, value.asString().getValue(), RowType.STRING);
+        } else if (value.isNull()) {
+            row.add(key, null, RowType.NULL);
         } else {
             throw new IllegalArgumentException("Unsupported type of value");
         }

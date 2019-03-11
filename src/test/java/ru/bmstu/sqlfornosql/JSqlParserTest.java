@@ -47,11 +47,12 @@ public class JSqlParserTest {
     @Test
     public void selectSeveralFromTables() throws JSQLParserException {
         Select select = (Select) CCJSqlParserUtil.parse(
-                "SELECT table1.a, table2.b FROM postgres.db.schema.table1, postgres.db.schema.table2 "
+                "SELECT table1.a, table2.b FROM postgres.db.schema.table1, postgres.db.schema.table2 ORDER BY table1.a ASC"
         );
 
         PlainSelect body = (PlainSelect) select.getSelectBody();
         System.out.println(body.getFromItem());
         System.out.println(body.getJoins());
+        System.out.println(body.getOrderByElements());
     }
 }

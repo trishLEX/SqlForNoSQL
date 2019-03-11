@@ -143,7 +143,9 @@ public class SqlHolder {
 
             List<SubSelect> subSelects = new ArrayList<>();
             List<Table> tables = new ArrayList<>();
-            fillVisibleColumnsAndTables(subSelects, tables, holder.fromItem);
+            if (holder.fromItem != null) {
+                fillVisibleColumnsAndTables(subSelects, tables, holder.fromItem);
+            }
 
             for (Join join : holder.joins) {
                 FromItem fromItem = join.getRightItem();
@@ -283,6 +285,27 @@ public class SqlHolder {
 
     public List<String> getSelectItemsStrings() {
         return selectItemsStrings;
+    }
+    
+    public List<String> getSelectIdents() {
+        return selectItemsStrings.stream().map(this::getIdentFromItem).collect(Collectors.toList());
+    }
+    
+    private String getIdentFromItem(String item) {
+        if (item.startsWith("sum(")
+                || item.startsWith("avg(")
+                || item.startsWith("min(")
+                || item.startsWith("max(")) {
+            return item.substring(4, item.length() - 1);
+        } else if (item.startsWith("count(")) {
+            if (item.contains("*")){
+                return "count";
+            } else {
+                return item.substring(6, item.length() - 1);
+            }
+        } else {
+            return item;
+        }
     }
 
     public List<Join> getJoins() {

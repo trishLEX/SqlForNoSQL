@@ -4,19 +4,18 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.mongodb.client.MongoDatabase;
 import net.sf.jsqlparser.statement.select.FromItem;
+import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SubSelect;
 import org.bson.BsonDocument;
+import ru.bmstu.sqlfornosql.adapters.postgres.PostgresClient;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoAdapter;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.model.Table;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -59,7 +58,9 @@ public class Executor {
         if (sqlHolder.getFromItem() instanceof Table) {
             switch (sqlHolder.getDatabase().getDbType()) {
                 case POSTGRES:
-                    throw new UnsupportedOperationException("not implemented yet");
+                    try (PostgresClient client = new PostgresClient("localhost", 5032, "postgres", "0212", "postgres")) {
+                        return client.executeQuery(sqlHolder);
+                    }
                 case MONGODB:
                     try (com.mongodb.MongoClient client = new com.mongodb.MongoClient()) {
                         MongoDatabase database = client.getDatabase(sqlHolder.getDatabase().getDatabaseName());
@@ -95,32 +96,55 @@ public class Executor {
      * @return таблицу с результато выполнения запроса
      */
     private Table selectWithJoins(SqlHolder sqlHolder) {
-        if (sqlHolder.getFromItem() instanceof SubSelect) {
-            SubSelect subSelect = ((SubSelect) sqlHolder.getFromItem());
-            String subSelectStr = subSelect.toString();
-            Table subSelectResult;
-            if (subSelect.isUseBrackets()) {
-                subSelectResult = execute(subSelectStr.substring(1, subSelectStr.length() - 1));
-            } else {
-                subSelectResult = execute(subSelectStr);
+        Map<FromItem, Table> resultParts = new HashMap<>();
+        int sourceCount = sqlHolder.getSelectItemMap().size();
+        List<SqlHolder> sqlHolders = new ArrayList<>(sourceCount);
+        for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : sqlHolder.getSelectItemMap().entrySet()) {
+            SqlHolder holder = new SqlHolder.SqlHolderBuilder()
+                    .withSelectItems(fromItemListEntry.getValue())
+                    .withFromItem(fromItemListEntry.getKey())
+                    .build();
+
+            String query = holder.toString();
+
+            List<String> queryOrParts = new ArrayList<>();
+
+            Set<String> selectItemsStr = Sets.newHashSet(holder.getSelectIdents());
+
+            if (sqlHolder.getWhereClause() != null) {
+                String whereExpression = sqlHolder.getWhereClause().toString();
+                String[] orParts = whereExpression.split("\\sOR\\s");
+                for (String part : orParts) {
+                    Matcher matcher = IDENT_REGEXP.matcher(part.replaceAll("'.*'", ""));
+                    List<String> idents = new ArrayList<>();
+                    while (matcher.find()) {
+                        if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
+                            idents.add(matcher.group(1));
+                        }
+                    }
+
+                    if (selectItemsStr.containsAll(idents)) {
+                        queryOrParts.add(part);
+                    }
+                }
             }
-        } else {
-            int sourceCount = sqlHolder.getSelectItemMap().size();
-            List<SqlHolder> sqlHolders = new ArrayList<>(sourceCount);
-            for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : sqlHolder.getSelectItemMap().entrySet()) {
-                SqlHolder holder = new SqlHolder.SqlHolderBuilder()
-                        .withSelectItems(fromItemListEntry.getValue())
-                        .withFromItem(fromItemListEntry.getKey()).build();
 
-                String query = holder.toString();
+            query += " " + String.join(" OR ", queryOrParts);
 
-                List<String> queryOrParts = new ArrayList<>();
+            if (!sqlHolder.getGroupBys().isEmpty()) {
+                List<String> groupBys = new ArrayList<>();
+                for (String groupByItem : sqlHolder.getGroupBys()) {
+                    if (selectItemsStr.contains(groupByItem)) {
+                        groupBys.add(groupByItem);
+                    }
+                }
 
-                Set<String> selectItemsStr = Sets.newHashSet(holder.getSelectItemsStrings());
+                query += " GROUP BY " + String.join(" ,", groupBys);
 
-                if (sqlHolder.getWhereClause() != null) {
-                    String whereExpression = sqlHolder.getWhereClause().toString();
-                    String[] orParts = whereExpression.split("\\sOR\\s");
+                if (sqlHolder.getHavingClause() != null) {
+                    List<String> havingOrParts = new ArrayList<>();
+                    String havingExpression = sqlHolder.getHavingClause().toString();
+                    String[] orParts = havingExpression.split("\\sOR\\s");
                     for (String part : orParts) {
                         Matcher matcher = IDENT_REGEXP.matcher(part.replaceAll("'.*'", ""));
                         List<String> idents = new ArrayList<>();
@@ -131,24 +155,37 @@ public class Executor {
                         }
 
                         if (selectItemsStr.containsAll(idents)) {
-                            queryOrParts.add(part);
-                        }
-                    }
-                }
-
-                query += " " + String.join(" OR ", queryOrParts);
-
-                if (!sqlHolder.getGroupBys().isEmpty()) {
-                    List<String> groupBys = new ArrayList<>();
-                    for (String groupByItem : sqlHolder.getGroupBys()) {
-                        if (selectItemsStr.contains(groupByItem)) {
-                            groupBys.add(groupByItem);
+                            havingOrParts.add(part);
                         }
                     }
 
-                    //TODO
+                    if (!havingOrParts.isEmpty()) {
+                        query += " HAVING " + String.join(" OR ", havingOrParts);
+                    }
                 }
             }
+
+            if (!sqlHolder.getOrderByElements().isEmpty()) {
+                List<String> orderBys = new ArrayList<>();
+                for (OrderByElement orderByItem : sqlHolder.getOrderByElements()) {
+                    Matcher matcher = IDENT_REGEXP.matcher(orderByItem.toString().replaceAll("'.*'", ""));
+                    List<String> idents = new ArrayList<>();
+                    while (matcher.find()) {
+                        if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
+                            idents.add(matcher.group(1));
+                        }
+                    }
+
+                    if (selectItemsStr.containsAll(idents)) {
+                        orderBys.add(orderByItem.toString());
+                    }
+                }
+
+                query += " ORDER BY " + String.join(" ,", orderBys);
+            }
+
+            Table result = execute(query);
+            resultParts.put(fromItemListEntry.getKey(), result);
         }
 
         throw new UnsupportedOperationException("not implemented yet");
