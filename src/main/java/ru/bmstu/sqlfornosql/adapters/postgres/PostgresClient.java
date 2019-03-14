@@ -18,7 +18,8 @@ public class PostgresClient implements AutoCloseable {
 
     public PostgresClient(String host, int port, String user, String password, String database) {
         try {
-            connection = DriverManager.getConnection(String.format("jdbc:postgresql://%s:%d/%s", host, port, database), user, password);
+            String connectionString = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+            connection = DriverManager.getConnection(connectionString, user, password);
         } catch (SQLException e) {
             throw new IllegalStateException("Can't open connection", e);
         }
@@ -27,7 +28,7 @@ public class PostgresClient implements AutoCloseable {
     public Table executeQuery(SqlHolder query) {
         try {
             Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(query.toString());
+            ResultSet resultSet = statement.executeQuery(query.getSqlQuery());
 
             return new PostgresMapper().mapResultSet(resultSet);
 

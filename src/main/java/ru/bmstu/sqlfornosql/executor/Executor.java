@@ -3,16 +3,17 @@ package ru.bmstu.sqlfornosql.executor;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.mongodb.client.MongoDatabase;
+import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.statement.select.FromItem;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SubSelect;
 import org.bson.BsonDocument;
-import ru.bmstu.sqlfornosql.adapters.postgres.PostgresClient;
-import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoAdapter;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
+import ru.bmstu.sqlfornosql.adapters.postgres.PostgresClient;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 import ru.bmstu.sqlfornosql.model.Table;
 
 import java.util.*;
@@ -57,7 +58,7 @@ public class Executor {
         if (sqlHolder.getFromItem() instanceof net.sf.jsqlparser.schema.Table) {
             switch (sqlHolder.getDatabase().getDbType()) {
                 case POSTGRES:
-                    try (PostgresClient client = new PostgresClient("localhost", 5032, "postgres", "0212", "postgres")) {
+                    try (PostgresClient client = new PostgresClient("localhost", 5432, "postgres", "0212", "postgres")) {
                         return client.executeQuery(sqlHolder);
                     }
                 case MONGODB:
@@ -112,21 +113,7 @@ public class Executor {
             Set<String> selectItemsStr = Sets.newHashSet(holder.getSelectIdents());
 
             if (sqlHolder.getWhereClause() != null) {
-                String whereExpression = sqlHolder.getWhereClause().toString();
-                String[] orParts = whereExpression.split("\\sOR\\s");
-                for (String part : orParts) {
-                    Matcher matcher = IDENT_REGEXP.matcher(part.replaceAll("'.*'", ""));
-                    List<String> idents = new ArrayList<>();
-                    while (matcher.find()) {
-                        if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
-                            idents.add(matcher.group(1));
-                        }
-                    }
-
-                    if (selectItemsStr.containsAll(idents)) {
-                        queryOrParts.add(part);
-                    }
-                }
+                fillIdents(selectItemsStr, queryOrParts, sqlHolder.getWhereClause());
             }
 
             query += " " + String.join(" OR ", queryOrParts);
@@ -143,21 +130,7 @@ public class Executor {
 
                 if (sqlHolder.getHavingClause() != null) {
                     List<String> havingOrParts = new ArrayList<>();
-                    String havingExpression = sqlHolder.getHavingClause().toString();
-                    String[] orParts = havingExpression.split("\\sOR\\s");
-                    for (String part : orParts) {
-                        Matcher matcher = IDENT_REGEXP.matcher(part.replaceAll("'.*'", ""));
-                        List<String> idents = new ArrayList<>();
-                        while (matcher.find()) {
-                            if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
-                                idents.add(matcher.group(1));
-                            }
-                        }
-
-                        if (selectItemsStr.containsAll(idents)) {
-                            havingOrParts.add(part);
-                        }
-                    }
+                    fillIdents(selectItemsStr, havingOrParts, sqlHolder.getHavingClause());
 
                     if (!havingOrParts.isEmpty()) {
                         query += " HAVING " + String.join(" OR ", havingOrParts);
@@ -168,17 +141,7 @@ public class Executor {
             if (!sqlHolder.getOrderByElements().isEmpty()) {
                 List<String> orderBys = new ArrayList<>();
                 for (OrderByElement orderByItem : sqlHolder.getOrderByElements()) {
-                    Matcher matcher = IDENT_REGEXP.matcher(orderByItem.toString().replaceAll("'.*'", ""));
-                    List<String> idents = new ArrayList<>();
-                    while (matcher.find()) {
-                        if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
-                            idents.add(matcher.group(1));
-                        }
-                    }
-
-                    if (selectItemsStr.containsAll(idents)) {
-                        orderBys.add(orderByItem.toString());
-                    }
+                    fillIdents(selectItemsStr, orderBys, orderByItem.toString());
                 }
 
                 query += " ORDER BY " + String.join(" ,", orderBys);
@@ -193,5 +156,27 @@ public class Executor {
         System.out.println(queries);
 
         throw new UnsupportedOperationException("not implemented yet");
+    }
+
+    private void fillIdents(Set<String> selectItemsStr, List<String> orderBys, String str) {
+        Matcher matcher = IDENT_REGEXP.matcher(str.replaceAll("'.*'", ""));
+        List<String> idents = new ArrayList<>();
+        while (matcher.find()) {
+            if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
+                idents.add(matcher.group(1));
+            }
+        }
+
+        if (selectItemsStr.containsAll(idents)) {
+            orderBys.add(str);
+        }
+    }
+
+    private void fillIdents(Set<String> selectItemsStr, List<String> whereOrParts, Expression whereClause) {
+        String havingExpression = whereClause.toString();
+        String[] orParts = havingExpression.split("\\sOR\\s");
+        for (String part : orParts) {
+            fillIdents(selectItemsStr, whereOrParts, part);
+        }
     }
 }
