@@ -9,7 +9,10 @@ import net.sf.jsqlparser.schema.Column;
 import org.bson.Document;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static ru.bmstu.sqlfornosql.adapters.mongo.MongoUtils.getNonQualifiedName;
@@ -71,21 +74,33 @@ public class WhereClauseParser {
                 }
 
             } else if (incomingExpression instanceof GreaterThan) {
-                final Expression leftExpression = ((GreaterThan) incomingExpression).getLeftExpression();
-                final Expression rightExpression = ((GreaterThan) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(), new Document("$gt",parseExpression(new Document(), rightExpression, leftExpression)));
+                Expression leftExpression = ((GreaterThan) incomingExpression).getLeftExpression();
+                Expression rightExpression = ((GreaterThan) incomingExpression).getRightExpression();
+
+                String leftExpressionStr = getNonQualifiedName(leftExpression.toString());
+
+                query.put(leftExpressionStr, new Document("$gt", parseExpression(new Document(), rightExpression, leftExpression)));
             } else if (incomingExpression instanceof MinorThan) {
-                final Expression leftExpression = ((MinorThan) incomingExpression).getLeftExpression();
-                final Expression rightExpression = ((MinorThan) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$lt", parseExpression(new Document(), rightExpression, leftExpression)));
+                Expression leftExpression = ((MinorThan) incomingExpression).getLeftExpression();
+                Expression rightExpression = ((MinorThan) incomingExpression).getRightExpression();
+
+                String leftExpressionStr = getNonQualifiedName(leftExpression.toString());
+
+                query.put(leftExpressionStr ,new Document("$lt", parseExpression(new Document(), rightExpression, leftExpression)));
             } else if (incomingExpression instanceof GreaterThanEquals) {
-                final Expression leftExpression = ((GreaterThanEquals) incomingExpression).getLeftExpression();
-                final Expression rightExpression = ((GreaterThanEquals) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$gte",parseExpression(new Document(), rightExpression, leftExpression)));
+                Expression leftExpression = ((GreaterThanEquals) incomingExpression).getLeftExpression();
+                Expression rightExpression = ((GreaterThanEquals) incomingExpression).getRightExpression();
+
+                String leftExpressionStr = getNonQualifiedName(leftExpression.toString());
+
+                query.put(leftExpressionStr, new Document("$gte", parseExpression(new Document(), rightExpression, leftExpression)));
             } else if (incomingExpression instanceof MinorThanEquals) {
-                final Expression leftExpression = ((MinorThanEquals) incomingExpression).getLeftExpression();
-                final Expression rightExpression = ((MinorThanEquals) incomingExpression).getRightExpression();
-                query.put(leftExpression.toString(),new Document("$lte", parseExpression(new Document(), rightExpression, leftExpression)));
+                Expression leftExpression = ((MinorThanEquals) incomingExpression).getLeftExpression();
+                Expression rightExpression = ((MinorThanEquals) incomingExpression).getRightExpression();
+
+                String leftExpressionStr = getNonQualifiedName(leftExpression.toString());
+
+                query.put(leftExpressionStr, new Document("$lte", parseExpression(new Document(), rightExpression, leftExpression)));
             }
         } else if(incomingExpression instanceof LikeExpression
                 && ((LikeExpression) incomingExpression).getLeftExpression() instanceof Column

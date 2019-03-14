@@ -1,10 +1,10 @@
 package ru.bmstu.sqlfornosql.executor;
 
-import java.util.regex.Matcher;
-
 import org.junit.Before;
 import org.junit.Test;
 import ru.bmstu.sqlfornosql.model.Table;
+
+import java.util.regex.Matcher;
 
 public class ExecutorTest {
     private Executor executor;
@@ -27,15 +27,22 @@ public class ExecutorTest {
     }
 
     @Test
-    public void simpleSelectTestMongo() {
+    public void simpleSelectMongoTest() {
         String query = "SELECT * FROM mongodb.test.test";
+        Table table = executor.execute(query);
+        System.out.println(table);
+    }
+
+    @Test
+    public void simplePostgresTest() {
+        String query = "SELECT * FROM postgres.postgres.test.test";
         Table table = executor.execute(query);
         System.out.println(table);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void selectSeveralFromItemsException() {
-        String query = "SELECT test.a, test.b FROM mongodb.test.test, postgres.db.schema.test";
+        String query = "SELECT test.a, test.b FROM mongodb.test.test, postgres.postgres.test.test";
         Table table = executor.execute(query);
         System.out.println(table);
     }
@@ -43,8 +50,7 @@ public class ExecutorTest {
     @Test
     public void selectSeveralFromItems() {
         //TODO можно мапить имена колонок в их fullQualifiedName
-        //TODO затестить fullQualifiedName в mongo
-        String query = "SELECT test.test.a, schema.test.b FROM mongodb.test.test, postgres.db.schema.test";
+        String query = "SELECT mongodb.test.test.a, postgres.test.test.b FROM mongodb.test.test, postgres.postgres.test.test";
         Table table = executor.execute(query);
         System.out.println(table);
     }

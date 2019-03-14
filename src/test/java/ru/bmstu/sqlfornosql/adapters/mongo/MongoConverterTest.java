@@ -21,52 +21,52 @@ public class MongoConverterTest {
     @Test
     public void simpleSelect() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT intField, dateField FROM mongodb.test.test")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT test.intField, test.dateField FROM mongodb.test.test")));
     }
 
     @Test
     public void simpleSelectWhere() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT intField, dateField FROM test WHERE intField = 123")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT test.intField, test.dateField FROM mongodb.test.test WHERE test.intField = 123")));
     }
 
     @Test
     public void simpleSelectWhereLike() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT intField, dateField FROM test WHERE stringField LIKE '%world'")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT test.intField, test.dateField FROM mongodb.test.test WHERE test.stringField LIKE '%world'")));
     }
 
     @Test
     public void simpleSelectCountAll() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT count(*) FROM test WHERE intField = 123")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT count(*) FROM mongodb.test.test WHERE test.intField = 123")));
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void simpleSelectSum() {
+    public void simpleSelectSumException() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT sum(intField), dateField FROM test WHERE intField = 123")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT sum(test.intField), test. FROM mongodb.test.test WHERE test.intField = 123")));
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void simpleSelectGroupBy() {
+    public void simpleSelectGroupByException() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT intField, dateField FROM test GROUP BY intField")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT test.intField, test.dateField FROM mongodb.test.test GROUP BY test.intField")));
     }
 
     @Test
     public void simpleSelectGroupByAgg() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT sum(intField) FROM test GROUP BY intField")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT sum(test.intField) FROM mongodb.test.test GROUP BY test.intField")));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void simpleSelectGroupByError() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT sum(intField), dateField FROM test GROUP BY intField")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT sum(test.intField), test.dateField FROM mongodb.test.test GROUP BY test.intField")));
     }
 
-    @Test //TODO works wrong
+    @Test
     public void simpleSelectGroupByHaving() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
         System.out.println(client.executeQuery(adapter.translate("SELECT sum(test.intField) FROM mongodb.test.test GROUP BY test.intField HAVING test.intField < 500")));
