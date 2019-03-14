@@ -49,6 +49,10 @@ public class MongoClient<T extends BsonDocument> {
                 documents.add(new Document("$limit", query.getLimit()));
             }
 
+            if (query.getOffset() != -1) {
+                documents.add(new Document("$skip", query.getOffset()));
+            }
+
             return mapper.mapGroupBy(collection.aggregate(documents, BsonDocument.class), query);
         } else {
             //TODO
@@ -60,6 +64,10 @@ public class MongoClient<T extends BsonDocument> {
 
             if (query.getLimit() != -1) {
                 findIterable.limit((int) query.getLimit());
+            }
+
+            if (query.getOffset() != -1) {
+                findIterable.skip((int) query.getOffset());
             }
 
             return mapper.mapFind(findIterable, query);

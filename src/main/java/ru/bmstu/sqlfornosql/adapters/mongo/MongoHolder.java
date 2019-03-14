@@ -24,6 +24,7 @@ public class MongoHolder {
     private List<String> selectFields;
     private boolean hasAggregateFunctions;
     private long limit;
+    private long offset;
 
     private MongoHolder() {
         query = new Document();
@@ -34,6 +35,7 @@ public class MongoHolder {
         groupBys = new ArrayList<>();
         hasAggregateFunctions = false;
         limit = -1;
+        offset = -1;
     }
 
     public MongoHolder(String database, String table) {
@@ -98,6 +100,7 @@ public class MongoHolder {
         }
 
         mongoHolder.limit = sqlHolder.getLimit();
+        mongoHolder.offset = sqlHolder.getOffset();
 
         mongoHolder.validate();
         return mongoHolder;
@@ -143,6 +146,10 @@ public class MongoHolder {
         return limit;
     }
 
+    public long getOffset() {
+        return offset;
+    }
+
     public boolean hasAggregateFunctions() {
         return hasAggregateFunctions;
     }
@@ -155,7 +162,7 @@ public class MongoHolder {
     public String toString() {
         return "MongoHolder{" +
                 "db='" + database + '\'' +
-                "table='" + table + '\'' +
+                ", table='" + table + '\'' +
                 ", query=" + query +
                 ", projection=" + projection +
                 ", sort=" + sort +
@@ -163,6 +170,7 @@ public class MongoHolder {
                 ", countAll=" + countAll +
                 ", groupBys=" + groupBys +
                 ", limit=" + limit +
+                ", offset=" + offset +
                 '}';
     }
 

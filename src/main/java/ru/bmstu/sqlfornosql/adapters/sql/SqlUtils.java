@@ -65,6 +65,15 @@ public class SqlUtils {
         return -1;
     }
 
+    public static long getOffset(Offset offset) {
+        if (offset != null) {
+            Preconditions.checkArgument(offset.getOffset() <= Integer.MAX_VALUE, offset.getOffset() + ": value is too large");
+            return offset.getOffset();
+        }
+
+        return -1;
+    }
+
     public static String getStringValue(Expression expression, boolean getNonQualifiedName) {
         if (expression instanceof StringValue) {
             return ((StringValue)expression).getValue();
@@ -231,6 +240,7 @@ public class SqlUtils {
         boolean isCountAll;
         FromItem fromItem;
         long limit;
+        long offset;
         Expression whereClause;
         List<SelectItem> selectItems;
         List<Join> joins;
@@ -249,6 +259,7 @@ public class SqlUtils {
                 isCountAll = SqlUtils.isCountAll(plainSelect.getSelectItems());
                 fromItem = plainSelect.getFromItem();
                 limit = SqlUtils.getLimit(plainSelect.getLimit());
+                offset = SqlUtils.getOffset(plainSelect.getOffset());
                 whereClause = plainSelect.getWhere();
                 selectItems = plainSelect.getSelectItems();
                 joins = plainSelect.getJoins();
@@ -261,6 +272,7 @@ public class SqlUtils {
                         .withCountAll(isCountAll)
                         .withFromItem(fromItem)
                         .withLimit(limit)
+                        .withOffset(offset)
                         .withWhere(whereClause)
                         .withSelectItems(selectItems)
                         .withJoins(joins)

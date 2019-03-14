@@ -94,6 +94,10 @@ public class Row {
         }
     }
 
+    public boolean isEmpty() {
+        return values.isEmpty();
+    }
+
     @Override
     public String toString() {
         return "{" + Joiner.on(", ").withKeyValueSeparator(": ").join(values) + "}";

@@ -34,6 +34,16 @@ public class Table {
         return columns;
     }
 
+    public boolean isEmpty() {
+        for (Row row : rows) {
+            if (!row.isEmpty()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     @Override
     public String toString() {
         StringBuilder res = new StringBuilder("ROWS:\n");

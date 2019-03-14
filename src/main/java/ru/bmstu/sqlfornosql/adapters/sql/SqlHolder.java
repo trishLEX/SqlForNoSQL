@@ -18,7 +18,9 @@ public class SqlHolder {
 
     @Nullable
     private FromItem fromItem;
+
     private long limit;
+    private long offset;
 
     @Nullable
     private Expression whereClause;
@@ -40,6 +42,7 @@ public class SqlHolder {
         isDistinct = false;
         isCountAll = false;
         limit = -1;
+        offset = -1;
         selectItems = new ArrayList<>();
         joins = new ArrayList<>();
         groupBys = new ArrayList<>();
@@ -79,6 +82,11 @@ public class SqlHolder {
 
         public SqlHolderBuilder withLimit(long limit) {
             holder.limit = limit;
+            return this;
+        }
+
+        public SqlHolderBuilder withOffset(long offset) {
+            holder.offset = offset;
             return this;
         }
 
@@ -140,7 +148,6 @@ public class SqlHolder {
             return this;
         }
 
-        //TODO method is not ready
         public SqlHolder build() {
             List<SubSelect> subSelects = new ArrayList<>();
             List<Table> tables = new ArrayList<>();
@@ -286,6 +293,10 @@ public class SqlHolder {
         return limit;
     }
 
+    public long getOffset() {
+        return offset;
+    }
+
     @Nullable
     public Expression getWhereClause() {
         return whereClause;
@@ -341,14 +352,120 @@ public class SqlHolder {
         return selectItemMap;
     }
 
+    private String getStringFromJoin(Join join) {
+        if (join.isSimple()) {
+            String joinStr = join.getRightItem().toString();
+            return joinStr.substring(joinStr.indexOf('.') + 1);
+        } else {
+            String type = "";
+
+            if (join.isRight()) {
+                type += "RIGHT ";
+            } else if (join.isNatural()) {
+                type += "NATURAL ";
+            } else if (join.isFull()) {
+                type += "FULL ";
+            } else if (join.isLeft()) {
+                type += "LEFT ";
+            } else if (join.isCross()) {
+                type += "CROSS ";
+            }
+
+            if (join.isOuter()) {
+                type += "OUTER ";
+            } else if (join.isInner()) {
+                type += "INNER ";
+            } else if (join.isSemi()) {
+                type += "SEMI ";
+            }
+
+            String rightItemStr = join.getRightItem().toString();
+            rightItemStr = rightItemStr.substring(rightItemStr.indexOf('.') + 1);
+
+            return type + "JOIN " + rightItemStr + ((join.getOnExpression() != null) ? " ON " + join.getOnExpression() + "" : "")
+                    + PlainSelect.getFormatedList(join.getUsingColumns(), "USING", true, true);
+        }
+    }
+
+    public String getSqlQuery() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("SELECT ");
+
+        addDistinct(sb);
+
+        sb.append(String.join(", ", selectItemsStrings));
+
+        if (fromItem != null) {
+            sb.append(" FROM ");
+            String from = ((Table) fromItem).getFullyQualifiedName();
+            sb.append(from.substring(from.indexOf('.') + 1));
+        }
+
+        for (Join join : joins) {
+            String joinStr = getStringFromJoin(join);
+            sb.append(" ").append(joinStr).append(" ");
+        }
+
+        addWhere(sb);
+        addGroupBy(sb);
+        addOrderBy(sb);
+        addLimit(sb);
+        addOffset(sb);
+
+        return sb.toString();
+    }
+
+    private void addOrderBy(StringBuilder sb) {
+        if (!orderByElements.isEmpty()) {
+            sb.append(" ORDER BY ");
+            sb.append(orderByElements
+                    .stream()
+                    .map(OrderByElement::toString)
+                    .collect(Collectors.joining(", "))
+            );
+        }
+    }
+
+    private void addGroupBy(StringBuilder sb) {
+        if (!groupBys.isEmpty()) {
+            sb.append(" GROUP BY ").append(String.join(", ", groupBys));
+
+            if (havingClause != null) {
+                sb.append(" HAVING ").append(havingClause);
+            }
+        }
+    }
+
+    private void addDistinct(StringBuilder sb) {
+        if (isDistinct) {
+            sb.append("DISTINCT ");
+        }
+    }
+
+    private void addWhere(StringBuilder sb) {
+        if (whereClause != null) {
+            sb.append(" WHERE ").append(whereClause);
+        }
+    }
+
+    private void addLimit(StringBuilder sb) {
+        if (limit != -1) {
+            sb.append(" LIMIT ").append(limit);
+        }
+    }
+
+    private void addOffset(StringBuilder sb) {
+        if (offset != -1) {
+            sb.append(" OFFSET ").append(offset);
+        }
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("SELECT ");
 
-        if (isDistinct) {
-            sb.append("DISTINCT ");
-        }
+        addDistinct(sb);
 
         sb.append(String.join(", ", selectItemsStrings));
 
@@ -358,32 +475,15 @@ public class SqlHolder {
         }
 
         for (Join join : joins) {
+            sb.append(" ");
             sb.append(join);
         }
 
-        if (whereClause != null) {
-            sb.append(" WHERE ");
-            sb.append(whereClause);
-        }
-
-        if (!groupBys.isEmpty()) {
-            sb.append(" GROUP BY ");
-            sb.append(String.join(", ", groupBys));
-
-            if (havingClause != null) {
-                sb.append(" HAVING ");
-                sb.append(havingClause);
-            }
-        }
-
-        if (!orderByElements.isEmpty()) {
-            sb.append(" ORDER BY ");
-            sb.append(orderByElements
-                    .stream()
-                    .map(OrderByElement::toString)
-                    .collect(Collectors.joining(", "))
-            );
-        }
+        addWhere(sb);
+        addGroupBy(sb);
+        addOrderBy(sb);
+        addLimit(sb);
+        addOffset(sb);
 
         return sb.toString();
     }
