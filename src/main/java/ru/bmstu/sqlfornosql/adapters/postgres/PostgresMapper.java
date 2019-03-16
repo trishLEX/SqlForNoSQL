@@ -1,5 +1,6 @@
 package ru.bmstu.sqlfornosql.adapters.postgres;
 
+import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
@@ -11,7 +12,7 @@ import java.sql.SQLException;
 import static java.sql.Types.*;
 
 public class PostgresMapper {
-    public Table mapResultSet(ResultSet resultSet) {
+    public Table mapResultSet(ResultSet resultSet, SqlHolder query) {
         Table table = new Table();
         try (resultSet){
             ResultSetMetaData metaData = resultSet.getMetaData();
@@ -19,7 +20,11 @@ public class PostgresMapper {
                 Row row = new Row();
                 for (int i = 1; i <= metaData.getColumnCount(); i++) {
                     RowType type = getTypeFromSqlType(metaData.getColumnType(i));
-                    row.add(metaData.getColumnName(i), getPostgresValue(resultSet, i, type), type);
+                    if (!query.isSelectAll()) {
+                        row.add(query.getQualifiedNamesMap().get(metaData.getColumnName(i)), getPostgresValue(resultSet, i, type), type);
+                    } else {
+                        row.add(metaData.getColumnName(i), getPostgresValue(resultSet, i, type), type);
+                    }
                 }
                 table.add(row);
             }

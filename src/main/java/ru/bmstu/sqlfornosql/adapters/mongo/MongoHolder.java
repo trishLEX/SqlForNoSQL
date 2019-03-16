@@ -6,7 +6,9 @@ import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class MongoHolder {
@@ -20,11 +22,14 @@ public class MongoHolder {
     private Document sort;
     private boolean distinct;
     private boolean countAll;
+    private boolean selectAll;
     private List<String> groupBys;
     private List<String> selectFields;
     private boolean hasAggregateFunctions;
     private long limit;
     private long offset;
+
+    private Map<String, String> qualifiedNameMap;
 
     private MongoHolder() {
         query = new Document();
@@ -32,10 +37,13 @@ public class MongoHolder {
         sort = new Document();
         distinct = false;
         countAll = false;
+        selectAll = false;
         groupBys = new ArrayList<>();
         hasAggregateFunctions = false;
         limit = -1;
         offset = -1;
+
+        qualifiedNameMap = new HashMap<>();
     }
 
     public MongoHolder(String database, String table) {
@@ -46,6 +54,12 @@ public class MongoHolder {
 
     public static MongoHolder createBySql(SqlHolder sqlHolder) {
         MongoHolder mongoHolder = new MongoHolder(sqlHolder.getDatabase().getDatabaseName(), sqlHolder.getDatabase().getTable());
+
+        mongoHolder.selectAll = sqlHolder.isSelectAll();
+
+        if (!mongoHolder.selectAll) {
+            sqlHolder.getSelectItemsStrings().forEach(col -> mongoHolder.qualifiedNameMap.put(MongoUtils.makeMongoColName(col), col));
+        }
 
         mongoHolder.selectFields = sqlHolder.getSelectItemsStrings()
                 .stream()
@@ -134,6 +148,10 @@ public class MongoHolder {
         return countAll;
     }
 
+    public boolean isSelectAll() {
+        return selectAll;
+    }
+
     public List<String> getGroupBys() {
         return groupBys;
     }
@@ -156,6 +174,10 @@ public class MongoHolder {
 
     public void setHasAggregateFunctions(boolean hasAggregateFunctions) {
         this.hasAggregateFunctions = hasAggregateFunctions;
+    }
+
+    public Map<String, String> getQualifiedNameMap() {
+        return qualifiedNameMap;
     }
 
     @Override

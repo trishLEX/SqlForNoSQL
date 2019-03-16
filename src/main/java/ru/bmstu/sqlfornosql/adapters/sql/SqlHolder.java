@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 public class SqlHolder {
     private boolean isDistinct;
     private boolean isCountAll;
+    private boolean isSelectAll;
 
     @Nullable
     private FromItem fromItem;
@@ -34,6 +35,7 @@ public class SqlHolder {
     private List<OrderByElement> orderByElements;
 
     private Map<FromItem, List<SelectItem>> selectItemMap;
+    private Map<String, String> qualifiedNamesMap;
 
     @Nullable
     private DatabaseName database;
@@ -41,13 +43,15 @@ public class SqlHolder {
     public SqlHolder() {
         isDistinct = false;
         isCountAll = false;
+        isSelectAll = false;
         limit = -1;
         offset = -1;
         selectItems = new ArrayList<>();
         joins = new ArrayList<>();
         groupBys = new ArrayList<>();
         orderByElements = new ArrayList<>();
-        selectItemMap = new HashMap<>();
+        selectItemMap = new LinkedHashMap<>();
+        qualifiedNamesMap = new HashMap<>();
     }
 
     public static class SqlHolderBuilder {
@@ -101,6 +105,8 @@ public class SqlHolder {
             if (selectItems != null) {
                 holder.selectItems = selectItems;
                 holder.selectItemsStrings = getSelectItemsStringFromSelectItems(selectItems);
+
+                holder.isSelectAll = holder.selectItemsStrings.contains("*");
             }
             return this;
         }
@@ -149,6 +155,11 @@ public class SqlHolder {
         }
 
         public SqlHolder build() {
+            holder.selectItemsStrings.forEach(col -> holder.qualifiedNamesMap.put(
+                    col.contains(".") ? col.substring(col.lastIndexOf(".") + 1).toLowerCase() : col.toLowerCase(),
+                    col)
+            );
+
             List<SubSelect> subSelects = new ArrayList<>();
             List<Table> tables = new ArrayList<>();
             if (holder.fromItem != null) {
@@ -284,6 +295,10 @@ public class SqlHolder {
         return isCountAll;
     }
 
+    public boolean isSelectAll() {
+        return isSelectAll;
+    }
+
     @Nullable
     public FromItem getFromItem() {
         return fromItem;
@@ -350,6 +365,10 @@ public class SqlHolder {
 
     public Map<FromItem, List<SelectItem>> getSelectItemMap() {
         return selectItemMap;
+    }
+
+    public Map<String, String> getQualifiedNamesMap() {
+        return qualifiedNamesMap;
     }
 
     private String getStringFromJoin(Join join) {

@@ -30,15 +30,13 @@ public class MongoMapper {
                 } else {
                     String field = MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID));
                     if (query.getSelectFields().contains(field)) {
-                        BsonValue value = element.get(MONGO_ID);
-                        addValueToRow(row, field, value);
+                        addValueToRow(row, query, element, MONGO_ID);
                     }
                 }
 
                 for (String column : element.keySet()) {
                     if (!column.equals(MONGO_ID) && query.getSelectFields().contains(column)) {
-                        BsonValue value = element.get(column);
-                        addValueToRow(row, column, value);
+                        addValueToRow(row, query, element, column);
                     }
                 }
             }
@@ -60,7 +58,11 @@ public class MongoMapper {
             Row row = new Row();
 
             for (Map.Entry<String, BsonValue> pair : mongoRow.entrySet()) {
-                addValueToRow(row, pair.getKey(), pair.getValue());
+                if (!query.isSelectAll()) {
+                    addValueToRow(row, query.getQualifiedNameMap().get(pair.getKey()), pair.getValue());
+                } else {
+                    addValueToRow(row, pair.getKey(), pair.getValue());
+                }
             }
 
             table.add(row);
@@ -73,11 +75,23 @@ public class MongoMapper {
         if (element.get(MONGO_ID).isDocument()) {
             BsonDocument idDocument = element.getDocument(MONGO_ID);
             for (String column : idDocument.keySet()) {
-                BsonValue value = idDocument.get(column);
-                addValueToRow(row, column, value);
+                addValueToRow(row, query, idDocument, column);
             }
         } else {
-            addValueToRow(row, query.getProjection().getString(MONGO_ID), element.get(MONGO_ID));
+            if (!query.isSelectAll()) {
+                addValueToRow(row, query.getQualifiedNameMap().get(MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID))), element.get(MONGO_ID));
+            } else {
+                addValueToRow(row, MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID)), element.get(MONGO_ID));
+            }
+        }
+    }
+
+    private void addValueToRow(Row row, MongoHolder query, BsonDocument document, String column) {
+        BsonValue value = document.get(column);
+        if (!query.isSelectAll()) {
+            addValueToRow(row, query.getQualifiedNameMap().get(column), value);
+        } else {
+            addValueToRow(row, column, value);
         }
     }
 

@@ -1,6 +1,7 @@
 package ru.bmstu.sqlfornosql.executor;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.mongodb.client.MongoDatabase;
 import net.sf.jsqlparser.expression.Expression;
@@ -96,7 +97,7 @@ public class Executor {
      * @return таблицу с результато выполнения запроса
      */
     private Table selectWithJoins(SqlHolder sqlHolder) {
-        Map<FromItem, Table> resultParts = new HashMap<>();
+        Map<FromItem, Table> resultParts = new LinkedHashMap<>();
         int sourceCount = sqlHolder.getSelectItemMap().size();
         List<SqlHolder> sqlHolders = new ArrayList<>(sourceCount);
         List<String> queries = new ArrayList<>();
@@ -149,13 +150,18 @@ public class Executor {
 
             queries.add(query);
 
-            //Table result = execute(query);
-            //resultParts.put(fromItemListEntry.getKey(), result);
+            Table result = execute(query);
+            resultParts.put(fromItemListEntry.getKey(), result);
         }
 
         System.out.println(queries);
 
-        throw new UnsupportedOperationException("not implemented yet");
+        Table from = resultParts.remove(sqlHolder.getFromItem());
+        if (from == null) {
+            throw new IllegalStateException("FromItem can not be null");
+        }
+
+        return Joiner.join(from, Lists.newArrayList(resultParts.values()), sqlHolder.getJoins(), sqlHolder.getWhereClause());
     }
 
     private void fillIdents(Set<String> selectItemsStr, List<String> orderBys, String str) {

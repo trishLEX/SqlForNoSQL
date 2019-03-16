@@ -87,11 +87,23 @@ public class Row {
     }
 
     public Object getObject(String key) {
-        if (typeMap.containsKey(key)) {
+        if (values.containsKey(key)) {
             return values.get(key);
         } else {
             throw new IllegalArgumentException("No column with name: " + key);
         }
+    }
+
+    public RowType getType(String key) {
+        if (typeMap.containsKey(key)) {
+            return typeMap.get(key);
+        } else {
+            throw new IllegalArgumentException("No column with name: " + key);
+        }
+    }
+
+    public boolean contains(String key) {
+        return values.containsKey(key);
     }
 
     public boolean isEmpty() {

@@ -30,7 +30,7 @@ public class PostgresClient implements AutoCloseable {
             Statement statement = connection.createStatement();
             ResultSet resultSet = statement.executeQuery(query.getSqlQuery());
 
-            return new PostgresMapper().mapResultSet(resultSet);
+            return new PostgresMapper().mapResultSet(resultSet, query);
 
         } catch (SQLException e) {
             throw new IllegalStateException("Can't execute query", e);

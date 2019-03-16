@@ -113,7 +113,7 @@ public class SqlUtils {
             if (comparisonOperator.getLeftExpression() instanceof Function) {
                 Function function = ((Function)comparisonOperator.getLeftExpression());
 
-                if ("date".equalsIgnoreCase(function.getName())
+                if ("to_date".equalsIgnoreCase(function.getName())
                         && (function.getParameters().getExpressions().size() == 2)
                         && function.getParameters().getExpressions().get(1) instanceof StringValue) {
 
