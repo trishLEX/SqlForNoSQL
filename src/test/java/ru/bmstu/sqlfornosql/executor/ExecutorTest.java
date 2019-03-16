@@ -62,4 +62,21 @@ public class ExecutorTest {
         Table table = executor.execute(query);
         System.out.println(table);
     }
+
+    @Test
+    public void selectJoinTestWhereOneTable() {
+        String query = "SELECT mongodb.test.test.intField, postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
+                "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField WHERE mongodb.test.test.intField = 123";
+        Table table = executor.execute(query);
+        System.out.println(table);
+    }
+
+    @Test
+    public void selectJoinTestWhereTwoTables() {
+        String query = "SELECT mongodb.test.test.intField, postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
+                "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField " +
+                "WHERE mongodb.test.test.intField + postgres.test.test.intField = 246";
+        Table table = executor.execute(query);
+        System.out.println(table);
+    }
 }

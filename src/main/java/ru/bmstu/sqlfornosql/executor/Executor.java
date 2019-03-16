@@ -98,8 +98,6 @@ public class Executor {
      */
     private Table selectWithJoins(SqlHolder sqlHolder) {
         Map<FromItem, Table> resultParts = new LinkedHashMap<>();
-        int sourceCount = sqlHolder.getSelectItemMap().size();
-        List<SqlHolder> sqlHolders = new ArrayList<>(sourceCount);
         List<String> queries = new ArrayList<>();
         for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : sqlHolder.getSelectItemMap().entrySet()) {
             SqlHolder holder = new SqlHolder.SqlHolderBuilder()
@@ -179,8 +177,8 @@ public class Executor {
     }
 
     private void fillIdents(Set<String> selectItemsStr, List<String> whereOrParts, Expression whereClause) {
-        String havingExpression = whereClause.toString();
-        String[] orParts = havingExpression.split("\\sOR\\s");
+        String whereExpression = whereClause.toString();
+        String[] orParts = whereExpression.split("\\sOR\\s");
         for (String part : orParts) {
             fillIdents(selectItemsStr, whereOrParts, part);
         }
