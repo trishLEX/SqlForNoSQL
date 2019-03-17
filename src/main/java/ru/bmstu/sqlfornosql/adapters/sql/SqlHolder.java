@@ -27,6 +27,7 @@ public class SqlHolder {
     private Expression whereClause;
     private List<SelectItem> selectItems;
     private List<String> selectItemsStrings;
+    private List<String> additionalSelectItemsStrings;
     private List<Join> joins;
     private List<String> groupBys;
 
@@ -47,6 +48,7 @@ public class SqlHolder {
         limit = -1;
         offset = -1;
         selectItems = new ArrayList<>();
+        additionalSelectItemsStrings = new ArrayList<>();
         joins = new ArrayList<>();
         groupBys = new ArrayList<>();
         orderByElements = new ArrayList<>();
@@ -189,6 +191,8 @@ public class SqlHolder {
                     })
                     .collect(Collectors.toList());
 
+            holder.selectItemMap.put(holder.fromItem, Lists.newArrayList());
+
             for (SelectItem column : holder.selectItems) {
                 boolean existsInVisibleColumns = visibleColumns.contains(column);
                 if (existsInVisibleColumns) {
@@ -324,7 +328,15 @@ public class SqlHolder {
     public List<String> getSelectItemsStrings() {
         return selectItemsStrings;
     }
-    
+
+    public List<String> getAdditionalSelectItemsStrings() {
+        return additionalSelectItemsStrings;
+    }
+
+    public void addAllAdditionalItemStrings(List<String> item) {
+        additionalSelectItemsStrings.addAll(item);
+    }
+
     public List<String> getSelectIdents() {
         return selectItemsStrings.stream().map(this::getIdentFromItem).collect(Collectors.toList());
     }
@@ -408,11 +420,7 @@ public class SqlHolder {
 
     public String getSqlQuery() {
         StringBuilder sb = new StringBuilder();
-        sb.append("SELECT ");
-
-        addDistinct(sb);
-
-        sb.append(String.join(", ", selectItemsStrings));
+        addSelect(sb);
 
         if (fromItem != null) {
             sb.append(" FROM ");
@@ -432,6 +440,16 @@ public class SqlHolder {
         addOffset(sb);
 
         return sb.toString();
+    }
+
+    private void addSelect(StringBuilder sb) {
+        sb.append("SELECT ");
+
+        addDistinct(sb);
+
+        Set<String> selectItems = new LinkedHashSet<>(selectItemsStrings);
+        selectItems.addAll(additionalSelectItemsStrings);
+        sb.append(String.join(", ", selectItems));
     }
 
     private void addOrderBy(StringBuilder sb) {
@@ -482,11 +500,7 @@ public class SqlHolder {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("SELECT ");
-
-        addDistinct(sb);
-
-        sb.append(String.join(", ", selectItemsStrings));
+        addSelect(sb);
 
         if (fromItem != null) {
             sb.append(" FROM ");

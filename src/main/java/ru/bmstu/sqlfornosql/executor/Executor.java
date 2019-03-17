@@ -5,10 +5,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.mongodb.client.MongoDatabase;
 import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.statement.select.FromItem;
-import net.sf.jsqlparser.statement.select.OrderByElement;
-import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.statement.select.SubSelect;
+import net.sf.jsqlparser.statement.select.*;
 import org.bson.BsonDocument;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoAdapter;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
@@ -20,6 +17,7 @@ import ru.bmstu.sqlfornosql.model.Table;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class Executor {
     static final Pattern IDENT_REGEXP = Pattern.compile("([a-zA-Z]+[0-9a-zA-Z.]*)");
@@ -99,17 +97,35 @@ public class Executor {
     private Table selectWithJoins(SqlHolder sqlHolder) {
         Map<FromItem, Table> resultParts = new LinkedHashMap<>();
         List<String> queries = new ArrayList<>();
+
+        Set<String> additionalSelectItems = new HashSet<>();
         for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : sqlHolder.getSelectItemMap().entrySet()) {
             SqlHolder holder = new SqlHolder.SqlHolderBuilder()
                     .withSelectItems(fromItemListEntry.getValue())
                     .withFromItem(fromItemListEntry.getKey())
                     .build();
 
+            Set<String> selectItemsStr = Sets.newHashSet(holder.getSelectIdents());
+
+            if (!fromItemListEntry.getKey().equals(sqlHolder.getFromItem())) {
+                holder.addAllAdditionalItemStrings(getAdditionalSelectItemsStrings(fromItemListEntry.getKey(), sqlHolder.getJoins(), selectItemsStr));
+            }
+
+            if (sqlHolder.getWhereClause() != null) {
+                holder.addAllAdditionalItemStrings(getIdentsFromExpression(fromItemListEntry.getKey(), sqlHolder.getWhereClause(), selectItemsStr));
+            }
+
+            selectItemsStr.addAll(holder.getAdditionalSelectItemsStrings());
+            additionalSelectItems.addAll(holder.getAdditionalSelectItemsStrings());
+
+            if (selectItemsStr.isEmpty()) {
+                resultParts.put(fromItemListEntry.getKey(), new Table());
+                continue;
+            }
+
             String query = holder.toString();
 
             List<String> queryOrParts = new ArrayList<>();
-
-            Set<String> selectItemsStr = Sets.newHashSet(holder.getSelectIdents());
 
             if (sqlHolder.getWhereClause() != null) {
                 fillIdents(selectItemsStr, queryOrParts, sqlHolder.getWhereClause());
@@ -165,10 +181,45 @@ public class Executor {
             throw new IllegalStateException("FromItem can not be null");
         }
 
-        return Joiner.join(from, Lists.newArrayList(resultParts.values()), sqlHolder.getJoins(), sqlHolder.getWhereClause());
+        Table result = Joiner.join(from, Lists.newArrayList(resultParts.values()), sqlHolder.getJoins(), sqlHolder.getWhereClause());
+        result.remove(additionalSelectItems);
+        return result;
     }
 
-    private void fillIdents(Set<String> selectItemsStr, List<String> orderBys, String str) {
+    //TODO не поддерживатся USING
+    private List<String> getAdditionalSelectItemsStrings(FromItem from, List<Join> joins, Set<String> existingSelectItems) {
+        int i = joins.stream().map(Join::getRightItem).collect(Collectors.toList()).indexOf(from);
+        if (i < 0) {
+            throw new IllegalStateException("From must be found in joins");
+        }
+
+        Join src = joins.get(i);
+        if (src.getOnExpression() == null) {
+            return Collections.emptyList();
+        }
+
+        return getIdentsFromExpression(from, src.getOnExpression(), existingSelectItems);
+    }
+
+    private List<String> getIdentsFromExpression(FromItem fromItem, Expression expression, Set<String> existingSelectItems) {
+        String stringExpr = expression.toString();
+        Matcher matcher = IDENT_REGEXP.matcher(stringExpr.replaceAll("'.*'", ""));
+        List<String> idents = new ArrayList<>();
+        while (matcher.find()) {
+            String potentialIdent = matcher.group(1);
+            String suffix = potentialIdent.contains(".") ? potentialIdent.substring(0, potentialIdent.lastIndexOf('.')) : potentialIdent;
+            if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())
+                    && fromItem.toString().endsWith(suffix)
+                    && !existingSelectItems.contains(potentialIdent))
+            {
+                idents.add(potentialIdent);
+            }
+        }
+
+        return idents;
+    }
+
+    private void fillIdents(Set<String> selectItemsStr, List<String> destination, String str) {
         Matcher matcher = IDENT_REGEXP.matcher(str.replaceAll("'.*'", ""));
         List<String> idents = new ArrayList<>();
         while (matcher.find()) {
@@ -178,7 +229,7 @@ public class Executor {
         }
 
         if (selectItemsStr.containsAll(idents)) {
-            orderBys.add(str);
+            destination.add(str);
         }
     }
 

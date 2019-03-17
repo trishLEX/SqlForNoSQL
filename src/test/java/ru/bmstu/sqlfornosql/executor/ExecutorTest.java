@@ -49,7 +49,6 @@ public class ExecutorTest {
 
     @Test
     public void selectSeveralFromItemsTest() {
-        //TODO можно мапить имена колонок в их fullQualifiedName
         String query = "SELECT mongodb.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test, postgres.postgres.test.test";
         Table table = executor.execute(query);
         System.out.println(table);
@@ -65,7 +64,7 @@ public class ExecutorTest {
 
     @Test
     public void selectJoinTestWhereOneTable() {
-        String query = "SELECT mongodb.test.test.intField, postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
+        String query = "SELECT postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
                 "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField " +
                 "WHERE mongodb.test.test.intField = 123";
         Table table = executor.execute(query);

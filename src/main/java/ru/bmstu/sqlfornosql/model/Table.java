@@ -1,9 +1,6 @@
 package ru.bmstu.sqlfornosql.model;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class Table {
     private List<Row> rows;
@@ -42,6 +39,13 @@ public class Table {
         }
 
         return true;
+    }
+
+    public void remove(Collection<String> keys) {
+        columns.removeAll(keys);
+        for (Row row : rows) {
+            row.remove(keys);
+        }
     }
 
     @Override

@@ -3,6 +3,7 @@ package ru.bmstu.sqlfornosql.model;
 import com.google.common.base.Joiner;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -99,6 +100,13 @@ public class Row {
             return typeMap.get(key);
         } else {
             throw new IllegalArgumentException("No column with name: " + key);
+        }
+    }
+
+    public void remove(Collection<String> keys) {
+        for (String key : keys) {
+            typeMap.remove(key);
+            values.remove(key);
         }
     }
 
