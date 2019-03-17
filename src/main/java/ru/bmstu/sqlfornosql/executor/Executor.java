@@ -113,9 +113,11 @@ public class Executor {
 
             if (sqlHolder.getWhereClause() != null) {
                 fillIdents(selectItemsStr, queryOrParts, sqlHolder.getWhereClause());
-            }
 
-            query += " " + String.join(" OR ", queryOrParts);
+                if (!queryOrParts.isEmpty()) {
+                    query += " WHERE " + String.join(" OR ", queryOrParts);
+                }
+            }
 
             if (!sqlHolder.getGroupBys().isEmpty()) {
                 List<String> groupBys = new ArrayList<>();
@@ -125,7 +127,9 @@ public class Executor {
                     }
                 }
 
-                query += " GROUP BY " + String.join(" ,", groupBys);
+                if (!groupBys.isEmpty()) {
+                    query += " GROUP BY " + String.join(" ,", groupBys);
+                }
 
                 if (sqlHolder.getHavingClause() != null) {
                     List<String> havingOrParts = new ArrayList<>();
@@ -143,7 +147,9 @@ public class Executor {
                     fillIdents(selectItemsStr, orderBys, orderByItem.toString());
                 }
 
-                query += " ORDER BY " + String.join(" ,", orderBys);
+                if (!orderBys.isEmpty()) {
+                    query += " ORDER BY " + String.join(" ,", orderBys);
+                }
             }
 
             queries.add(query);

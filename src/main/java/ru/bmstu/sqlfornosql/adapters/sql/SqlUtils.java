@@ -284,7 +284,7 @@ public class SqlUtils {
                 throw new IllegalArgumentException("Only select statements are supported");
             }
         } catch (JSQLParserException e) {
-            throw new IllegalArgumentException("Can't parse statement", e);
+            throw new IllegalArgumentException("Can't parse statement: " + sql, e);
         }
     }
 }
