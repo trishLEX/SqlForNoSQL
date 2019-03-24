@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
+import ru.bmstu.sqlfornosql.adapters.mongo.MongoUtils;
 import ru.bmstu.sqlfornosql.model.DatabaseName;
 
 import javax.annotation.Nullable;
@@ -156,6 +157,10 @@ public class SqlHolder {
             return this;
         }
 
+        private boolean hasColumnAggregationFunction(String col) {
+            return col.matches("sum\\(.*\\)|avg\\(.*\\)|min\\(.*\\)|max\\(.*\\)|count\\(.*\\)");
+        }
+
         public SqlHolder build() {
             holder.selectItemsStrings.forEach(col -> holder.qualifiedNamesMap.put(
                     col.contains(".") ? col.substring(col.lastIndexOf(".") + 1).toLowerCase() : col.toLowerCase(),
@@ -284,6 +289,15 @@ public class SqlHolder {
                 throw new IllegalArgumentException("Illegal type of fromItem");
             }
         }
+    }
+
+    public void updateSelectItems() {
+        selectItemsStrings.forEach(col -> {
+            qualifiedNamesMap.put(MongoUtils.makeMongoColName(col).toLowerCase(), col);
+            String selectItem = selectItemsStrings.get(selectItemsStrings.indexOf(col));
+            selectItem += "AS " + MongoUtils.makeMongoColName(col);
+            selectItemsStrings.set(selectItemsStrings.indexOf(col), selectItem);
+        });
     }
 
     @Nullable

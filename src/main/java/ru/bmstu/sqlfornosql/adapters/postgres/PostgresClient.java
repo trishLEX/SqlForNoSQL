@@ -26,6 +26,7 @@ public class PostgresClient implements AutoCloseable {
     }
 
     public Table executeQuery(SqlHolder query) {
+        query.updateSelectItems();
         try {
             Statement statement = connection.createStatement();
             ResultSet resultSet = statement.executeQuery(query.getSqlQuery());

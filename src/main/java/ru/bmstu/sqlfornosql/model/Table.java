@@ -52,11 +52,7 @@ public class Table {
     public String toString() {
         StringBuilder res = new StringBuilder("ROWS:\n");
         for (Row row : rows) {
-            res.append("{");
-            for (String col : columns) {
-                res.append(col).append(": ").append(row.getObject(col)).append(", ");
-            }
-            res.delete(res.length() - 2, res.length()).append("}\n");
+            res.append(row.toString()).append("\n");
         }
         res.append("\n");
         return res.toString();

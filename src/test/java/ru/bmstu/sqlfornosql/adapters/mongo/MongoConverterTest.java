@@ -45,7 +45,7 @@ public class MongoConverterTest {
     @Test(expected = IllegalArgumentException.class)
     public void simpleSelectSumException() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
-        System.out.println(client.executeQuery(adapter.translate("SELECT sum(test.intField), test. FROM mongodb.test.test WHERE test.intField = 123")));
+        System.out.println(client.executeQuery(adapter.translate("SELECT sum(test.intField), test FROM mongodb.test.test WHERE test.intField = 123")));
     }
 
     @Test(expected = IllegalArgumentException.class)
