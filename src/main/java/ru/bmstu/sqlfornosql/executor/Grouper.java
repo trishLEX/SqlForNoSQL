@@ -22,7 +22,7 @@ public class Grouper {
 
             if (index.containsKey(indexEntry)) {
                 Row resRow = index.get(indexEntry);
-                index.put(indexEntry, mergeRows(row, resRow, columns));
+                index.put(indexEntry, mergeRows(row, resRow, columns, table.getTypeMap(), result));
             } else {
                 index.put(indexEntry, row);
             }
@@ -31,11 +31,12 @@ public class Grouper {
         throw new UnsupportedOperationException();
     }
 
-    private static Row mergeRows(Row a, Row b, Collection<String> columns) {
-        Row row = new Row();
+    private static Row mergeRows(Row a, Row b, Collection<String> columns, Map<String, RowType> typeMap, Table table) {
+        Row row = new Row(table);
         for (String column : columns) {
             //TODO type должен определяться динамически (вдруг null и int были)
-            row.add(column, mergeValues(a, b, column), a.getType(column));
+            row.add(column, mergeValues(a, b, column, typeMap));
+            table.setType(column, typeMap.get(column));
         }
 
         return row;
@@ -43,48 +44,54 @@ public class Grouper {
 
     //TODO фикс тип данных NULL, хотелось бы иметь все таки Int и занчение null, а не тип данных null
     //TODO не поддерживается если столбец был в group by и он без аггрегационной функции
-    private static Object mergeValues(Row a, Row b, String column) {
-        if (a.getType(column) != RowType.NULL && b.getType(column) != RowType.NULL && a.getType(column) != b.getType(column)) {
-            throw new IllegalStateException("Types of values are not equal:" + a.getObject(column) + " and " + b.getObject(column));
-        }
+    private static Object mergeValues(Row a, Row b, String column, Map<String, RowType> typeMap) {
+//        if (typeMap.get(column) != RowType.NULL && typeMap.get(column) != RowType.NULL && a.getType(column) != b.getType(column)) {
+//            throw new IllegalStateException("Types of values are not equal:" + a.getObject(column) + " and " + b.getObject(column));
+//        }
 
-        switch (a.getType(column)) {
+        switch (typeMap.get(column)) {
             case NULL:
-                if (b.getType(column) == RowType.NULL) {
-                    return null;
-                } else {
-                    return b.getObject(column);
-                }
+//                if (b.getType(column) == RowType.NULL) {
+//                    return null;
+//                } else {
+//                    return b.getObject(column);
+//                }
+                return b.getObject(column);
             case STRING:
-                if (b.getType(column) == RowType.NULL) {
-                    return a.getObject(column);
-                } else {
-                    return mergeStrings(a.getObject(column), b.getObject(column), column);
-                }
+//                if (b.getType(column) == RowType.NULL) {
+//                    return a.getObject(column);
+//                } else {
+//                    return mergeStrings(a.getObject(column), b.getObject(column), column);
+//                }
+                mergeStrings(a.getObject(column), b.getObject(column), column);
             case BOOLEAN:
-                if (b.getType(column) == RowType.NULL) {
-                    return a.getObject(column);
-                } else {
-                    return mergeBools(a.getObject(column), b.getObject(column), column);
-                }
+//                if (b.getType(column) == RowType.NULL) {
+//                    return a.getObject(column);
+//                } else {
+//                    return mergeBools(a.getObject(column), b.getObject(column), column);
+//                }
+                mergeBools(a.getObject(column), b.getObject(column), column);
             case DATE:
-                if (b.getType(column) == RowType.NULL) {
-                    return a.getObject(column);
-                } else {
-                    return mergeDates(a, b, column);
-                }
+//                if (b.getType(column) == RowType.NULL) {
+//                    return a.getObject(column);
+//                } else {
+//                    return mergeDates(a, b, column);
+//                }
+                return mergeDates(a.getObject(column), b.getObject(column), column);
             case DOUBLE:
-                if (b.getType(column) == RowType.NULL) {
-                    return a.getObject(column);
-                } else {
-                    return mergeDoubles(a, b, column);
-                }
+//                if (b.getType(column) == RowType.NULL) {
+//                    return a.getObject(column);
+//                } else {
+//                    return mergeDoubles(a, b, column);
+//                }
+                mergeDoubles(a.getObject(column), b.getObject(column), column);
             case INT:
-                if (b.getType(column) == RowType.NULL) {
-                    return a.getObject(column);
-                } else {
-                    return mergeInts(a, b, column);
-                }
+//                if (b.getType(column) == RowType.NULL) {
+//                    return a.getObject(column);
+//                } else {
+//                    return mergeInts(a, b, column);
+//                }
+                mergeInts(a.getObject(column), b.getObject(column), column);
             default:
                 throw new IllegalStateException("Unsupported type of column: " + column);
         }

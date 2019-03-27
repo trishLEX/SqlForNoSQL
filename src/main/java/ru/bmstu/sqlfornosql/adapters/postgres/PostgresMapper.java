@@ -8,6 +8,8 @@ import ru.bmstu.sqlfornosql.model.Table;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static java.sql.Types.*;
 
@@ -17,16 +19,21 @@ public class PostgresMapper {
         try (resultSet){
             ResultSetMetaData metaData = resultSet.getMetaData();
             while (resultSet.next()) {
-                Row row = new Row();
+                Row row = new Row(table);
+                Map<String, RowType> typeMap = new LinkedHashMap<>();
                 for (int i = 1; i <= metaData.getColumnCount(); i++) {
                     RowType type = getTypeFromSqlType(metaData.getColumnType(i));
                     if (!query.isSelectAll()) {
-                        row.add(query.getQualifiedNamesMap().get(metaData.getColumnName(i)), getPostgresValue(resultSet, i, type), type);
+                        String column = query.getQualifiedNamesMap().get(metaData.getColumnName(i));
+                        row.add(column, getPostgresValue(resultSet, i, type));
+                        typeMap.put(column, type);
                     } else {
-                        row.add(metaData.getColumnName(i), getPostgresValue(resultSet, i, type), type);
+                        String column = metaData.getColumnName(i);
+                        row.add(column, getPostgresValue(resultSet, i, type));
+                        typeMap.put(column, type);
                     }
                 }
-                table.add(row);
+                table.add(row, typeMap);
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Can't get result of query", e);

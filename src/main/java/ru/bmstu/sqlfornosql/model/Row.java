@@ -9,16 +9,15 @@ import java.util.Map;
 import java.util.Set;
 
 public class Row {
-    private Map<String, RowType> typeMap;
+    private Table table;
     private Map<String, Object> values;
 
-    public Row() {
-        typeMap = new LinkedHashMap<>();
-        values = new LinkedHashMap<>();
+    public Row(Table table) {
+        this.table = table;
+        this.values = new LinkedHashMap<>();
     }
 
-    public Row add(String key, Object value, RowType type) {
-        typeMap.put(key, type);
+    public Row add(String key, Object value) {
         values.put(key, value);
         return this;
     }
@@ -28,11 +27,11 @@ public class Row {
     }
 
     public Boolean getBool(String key) {
-        if (typeMap.containsKey(key)) {
-            if (typeMap.get(key) == RowType.BOOLEAN) {
+        if (table.getType(key) != null) {
+            if (table.getType(key) == RowType.BOOLEAN) {
                 return (Boolean) values.get(key);
             } else {
-                throw new IllegalArgumentException("Column '" + key + "' has type: " + typeMap.get(key));
+                throw new IllegalArgumentException("Column '" + key + "' has type: " + table.getType(key));
             }
         } else {
             throw new IllegalArgumentException("No column with name: " + key);
@@ -40,11 +39,11 @@ public class Row {
     }
 
     public LocalDateTime getDate(String key) {
-        if (typeMap.containsKey(key)) {
-            if (typeMap.get(key) == RowType.DATE) {
+        if (table.getType(key) != null) {
+            if (table.getType(key) == RowType.DATE) {
                 return (LocalDateTime) values.get(key);
             } else {
-                throw new IllegalArgumentException("Column '" + key + "' has type: " + typeMap.get(key));
+                throw new IllegalArgumentException("Column '" + key + "' has type: " + table.getType(key));
             }
         } else {
             throw new IllegalArgumentException("No column with name: " + key);
@@ -52,11 +51,11 @@ public class Row {
     }
 
     public Double getDouble(String key) {
-        if (typeMap.containsKey(key)) {
-            if (typeMap.get(key) == RowType.DOUBLE) {
+        if (table.getType(key) != null) {
+            if (table.getType(key) == RowType.DOUBLE) {
                 return (Double) values.get(key);
             } else {
-                throw new IllegalArgumentException("Column '" + key + "' has type: " + typeMap.get(key));
+                throw new IllegalArgumentException("Column '" + key + "' has type: " + table.getType(key));
             }
         } else {
             throw new IllegalArgumentException("No column with name: " + key);
@@ -64,11 +63,11 @@ public class Row {
     }
 
     public Integer getInt(String key) {
-        if (typeMap.containsKey(key)) {
-            if (typeMap.get(key) == RowType.INT) {
+        if (table.getType(key) != null) {
+            if (table.getType(key) == RowType.INT) {
                 return (Integer) values.get(key);
             } else {
-                throw new IllegalArgumentException("Column '" + key + "' has type: " + typeMap.get(key));
+                throw new IllegalArgumentException("Column '" + key + "' has type: " + table.getType(key));
             }
         } else {
             throw new IllegalArgumentException("No column with name: " + key);
@@ -76,11 +75,11 @@ public class Row {
     }
 
     public String getString(String key) {
-        if (typeMap.containsKey(key)) {
-            if (typeMap.get(key) == RowType.STRING) {
+        if (table.getType(key) != null) {
+            if (table.getType(key) == RowType.STRING) {
                 return (String) values.get(key);
             } else {
-                throw new IllegalArgumentException("Column '" + key + "' has type: " + typeMap.get(key));
+                throw new IllegalArgumentException("Column '" + key + "' has type: " + table.getType(key));
             }
         } else {
             throw new IllegalArgumentException("No column with name: " + key);
@@ -95,17 +94,8 @@ public class Row {
         }
     }
 
-    public RowType getType(String key) {
-        if (typeMap.containsKey(key)) {
-            return typeMap.get(key);
-        } else {
-            throw new IllegalArgumentException("No column with name: " + key);
-        }
-    }
-
     public void remove(Collection<String> keys) {
         for (String key : keys) {
-            typeMap.remove(key);
             values.remove(key);
         }
     }
