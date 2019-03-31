@@ -7,17 +7,22 @@ import com.mongodb.client.MongoDatabase;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.statement.select.*;
 import org.bson.BsonDocument;
+import org.medfoster.sqljep.ParseException;
+import org.medfoster.sqljep.RowJEP;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoAdapter;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
 import ru.bmstu.sqlfornosql.adapters.postgres.PostgresClient;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
+import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.Table;
 
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 
 public class Executor {
     static final Pattern IDENT_REGEXP = Pattern.compile("([a-zA-Z]+[0-9a-zA-Z.]*)");
@@ -82,8 +87,56 @@ public class Executor {
                 subSelectResult = execute(subSelectStr);
             }
 
-            //TODO merge results
-            throw new UnsupportedOperationException("Not implemented yet");
+//            for (String col : sqlHolder.getSelectItemsStrings()) {
+//                if (col.startsWith("avg(")) {
+//                    sqlHolder.addAdditionalItemString("count" + col.substring(3));
+//                }
+//            }
+
+            Table result = new Table();
+            for (Row subSelectRow : subSelectResult.getRows()) {
+                Row row = new Row(result);
+                for (String column : sqlHolder.getSelectItemsStrings()) {
+                    row.add(column, subSelectRow.getObject(column));
+                    result.setType(column, subSelectResult.getType(column));
+                }
+
+                if (sqlHolder.getWhereClause() != null) {
+                    HashMap<String, Integer> colMapping = getIdentMapping(sqlHolder.getWhereClause().toString());
+                    RowJEP sqljep = prepareSqlJEP(sqlHolder.getWhereClause(), colMapping);
+                    Comparable[] values = new Comparable[colMapping.size()];
+
+                    for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
+                        values[colMappingEntry.getValue()] = getValue(row, colMappingEntry.getKey());
+                    }
+
+                    try {
+                        Boolean expressionValue = (Boolean) sqljep.getValue(values);
+                        if (expressionValue) {
+                            result.add(row);
+                        }
+                    } catch (ParseException e) {
+                        throw new IllegalStateException("Can't execute expression: " + sqlHolder.getWhereClause(), e);
+                    }
+                } else {
+                    result.add(row);
+                }
+            }
+
+            if (!sqlHolder.getGroupBys().isEmpty()) {
+                result = Grouper.group(result, sqlHolder.getGroupBys(), sqlHolder.getSelectItemsStrings(), sqlHolder.getHavingClause());
+            }
+
+            if (!sqlHolder.getOrderByElements().isEmpty()) {
+                LinkedHashMap<String, Boolean> orderByMap = new LinkedHashMap<>();
+                for (OrderByElement element : sqlHolder.getOrderByElements()) {
+                    //TODO order by можно выполянть по expression'у
+                    orderByMap.put(element.toString(), element.isAsc());
+                }
+                result.sort(orderByMap);
+            }
+
+            return result;
         } else {
             throw new IllegalStateException("Can't determine type of FROM argument");
         }

@@ -12,10 +12,9 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
 
-import static ru.bmstu.sqlfornosql.executor.Executor.FORBIDDEN_STRINGS;
-import static ru.bmstu.sqlfornosql.executor.Executor.IDENT_REGEXP;
+import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.getIdentMapping;
+import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.prepareSqlJEP;
 
 @ParametersAreNonnullByDefault
 public class Joiner {
@@ -52,7 +51,7 @@ public class Joiner {
                 try {
                     Boolean expressionValue = (Boolean) sqljep.getValue(row);
                     if (expressionValue) {
-                        addRow(result, joinRows(leftRow, rightRow), where);
+                        addRow(result, joinRows(result, leftRow, rightRow, leftTable, rightTable), where);
                     }
                 } catch (ParseException e) {
                     throw new IllegalStateException("Can't execute expression: " + onExpression, e);
@@ -68,21 +67,23 @@ public class Joiner {
 
         for (Row leftRow : leftTable.getRows()) {
             for (Row rightRow : rightTable.getRows()) {
-                addRow(result, joinRows(leftRow, rightRow), where);
+                addRow(result, joinRows(result, leftRow, rightRow, leftTable, rightTable), where);
             }
         }
 
         return result;
     }
 
-    private static Row joinRows(Row left, Row right) {
-        Row result = new Row();
+    private static Row joinRows(Table table, Row left, Row right, Table leftTable, Table rightTable) {
+        Row result = new Row(table);
         for (String leftColumn : left.getColumns()) {
-            result.add(leftColumn, left.getObject(leftColumn), left.getType(leftColumn));
+            result.add(leftColumn, left.getObject(leftColumn));
+            table.setType(leftColumn, leftTable.getType(leftColumn));
         }
 
         for (String rightColumn : right.getColumns()) {
-            result.add(rightColumn, right.getObject(rightColumn), right.getType(rightColumn));
+            result.add(rightColumn, right.getObject(rightColumn));
+            table.setType(rightColumn, rightTable.getType(rightColumn));
         }
 
         return result;
@@ -102,19 +103,6 @@ public class Joiner {
 
     private static Comparable getValue(Row row, String key) {
         return (Comparable) row.getObject(key);
-    }
-
-    private static HashMap<String, Integer> getIdentMapping(String expression) {
-        Matcher matcher = IDENT_REGEXP.matcher(expression.replaceAll("'.*'", ""));
-        HashMap<String, Integer> mapping = new HashMap<>();
-        int index = 0;
-        while (matcher.find()) {
-            if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
-                mapping.put(matcher.group(1), index++);
-            }
-        }
-
-        return mapping;
     }
 
     private static void addRow(Table table, Row row, @Nullable Expression where) {
@@ -139,16 +127,5 @@ public class Joiner {
                 throw new IllegalStateException("Can't execute expression: " + where, e);
             }
         }
-    }
-
-    private static RowJEP prepareSqlJEP(Expression expression, HashMap<String, Integer> colMapping) {
-        RowJEP sqljep = new RowJEP(expression.toString());
-        try {
-            sqljep.parseExpression(colMapping);
-        } catch (ParseException e) {
-            throw new IllegalArgumentException("Can't parse expression: " + expression, e);
-        }
-
-        return sqljep;
     }
 }

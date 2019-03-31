@@ -1,5 +1,6 @@
 package ru.bmstu.sqlfornosql.model;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static ru.bmstu.sqlfornosql.model.RowType.NULL;
@@ -22,7 +23,8 @@ public class Table {
         return this;
     }
 
-    private Table add(Row row) {
+    //TODO make private, сделать API для нормального добавления строк
+    public Table add(Row row) {
         rows.add(row);
         columns.addAll(row.getColumns());
         return this;
@@ -79,6 +81,59 @@ public class Table {
 
     public Map<String, RowType> getTypeMap() {
         return typeMap;
+    }
+
+    public void sort(LinkedHashMap<String, Boolean> orderByMap) {
+        rows.sort((o1, o2) -> {
+            for (Map.Entry<String, Boolean> orderEntry : orderByMap.entrySet()) {
+                int compare = compareValues(o1.getObject(orderEntry.getKey()), o2.getObject(orderEntry.getKey()), getType(orderEntry.getKey()));
+                if (compare != 0) {
+                    return orderEntry.getValue() ? compare : -compare;
+                }
+            }
+
+            return 0;
+        });
+    }
+
+    private int compareValues(Object a, Object b, RowType type) {
+        if (a == null && b == null) {
+            return 0;
+        } else if (a == null) {
+            return 1;
+        } else if (b == null) {
+            return -1;
+        }
+        switch (type) {
+            case NULL:
+                //TODO LOG IT
+                System.out.println("LOG HERE");
+                return 0;
+            case INT: {
+                Integer o1 = (Integer) a;
+                Integer o2 = (Integer) b;
+                return o1.compareTo(o2);
+            }
+            case DOUBLE: {
+                Double o1 = (Double) a;
+                Double o2 = (Double) b;
+                return o1.compareTo(o2);
+            }
+            case BOOLEAN: {
+                throw new IllegalArgumentException("Trying to sort by boolean");
+            }
+            case DATE: {
+                LocalDateTime o1 = (LocalDateTime) a;
+                LocalDateTime o2 = (LocalDateTime) b;
+                return o1.compareTo(o2);
+            }
+            case STRING:
+                String o1 = (String) a;
+                String o2 = (String) b;
+                return o1.compareTo(o2);
+            default:
+                throw new IllegalStateException("Unknown type: " + type);
+        }
     }
 
     @Override

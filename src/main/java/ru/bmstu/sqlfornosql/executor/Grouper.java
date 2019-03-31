@@ -1,17 +1,24 @@
 package ru.bmstu.sqlfornosql.executor;
 
+import net.sf.jsqlparser.expression.Expression;
+import org.medfoster.sqljep.ParseException;
+import org.medfoster.sqljep.RowJEP;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
 
+import javax.annotation.Nullable;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
+
 public class Grouper {
     //TODO Check that collections are sets
-    public static Table group(Table table, Collection<String> groupBys, Collection<String> columns) {
+    //TODO having unsupported
+    public static Table group(Table table, Collection<String> groupBys, Collection<String> columns, @Nullable Expression havingClause) {
         Table result = new Table();
         Map<Map<String, Object>, Row> index = new HashMap<>();
         for (Row row : table.getRows()) {
@@ -22,79 +29,126 @@ public class Grouper {
 
             if (index.containsKey(indexEntry)) {
                 Row resRow = index.get(indexEntry);
-                index.put(indexEntry, mergeRows(row, resRow, columns, table.getTypeMap(), result));
+                index.put(indexEntry, mergeRows(row, resRow, columns, groupBys, table.getTypeMap(), result));
             } else {
-                index.put(indexEntry, row);
+                index.put(indexEntry, defaultRow(row, columns, table.getTypeMap(), result));
             }
         }
 
-        throw new UnsupportedOperationException();
+        for (Row row : index.values()) {
+            if (havingClause != null) {
+                HashMap<String, Integer> colMapping = getIdentMapping(havingClause.toString());
+                RowJEP sqljep = prepareSqlJEP(havingClause, colMapping);
+                Comparable[] values = new Comparable[colMapping.size()];
+
+                for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
+                    values[colMappingEntry.getValue()] = getValue(row, colMappingEntry.getKey());
+                }
+
+                try {
+                    Boolean expressionValue = (Boolean) sqljep.getValue(values);
+                    if (expressionValue) {
+                        result.add(row);
+                    }
+                } catch (ParseException e) {
+                    throw new IllegalStateException("Can't execute expression: " + havingClause, e);
+                }
+            } else {
+                table.add(row);
+            }
+        }
+
+        return result;
     }
 
-    private static Row mergeRows(Row a, Row b, Collection<String> columns, Map<String, RowType> typeMap, Table table) {
+    private static Row mergeRows(Row a, Row b, Collection<String> columns, Collection<String> groupBys, Map<String, RowType> typeMap, Table table) {
         Row row = new Row(table);
         for (String column : columns) {
             //TODO type должен определяться динамически (вдруг null и int были)
-            row.add(column, mergeValues(a, b, column, typeMap));
-            table.setType(column, typeMap.get(column));
+            if (groupBys.contains(column)) {
+                System.out.println("should be equals: " + a.getObject(column) + " " + b.getObject(column));
+                row.add(column, typeMap.get(column));
+            } else {
+                if (column.toLowerCase().startsWith("avg(")) {
+                    String countColumn = "count(" + column.substring(4);
+                    row.add(column, avg(a.getDouble(column), a.getInt(countColumn), b.getDouble(column), b.getInt(countColumn)));
+                    row.add(countColumn, a.getInt(countColumn) + b.getInt(countColumn));
+                    table.setType(column, typeMap.get(column));
+                    table.setType(countColumn, RowType.INT);
+                } else {
+                    row.add(column, mergeValues(a, b, column, typeMap));
+                    table.setType(column, typeMap.get(column));
+                }
+            }
         }
 
         return row;
     }
 
+    private static Row defaultRow(Row row, Collection<String> columns, Map<String, RowType> typeMap, Table table) {
+        Row resRow = new Row(table);
+        for (String column : columns) {
+            if (column.toLowerCase().startsWith("min(")) {
+                resRow.add(column, row.getObject(column));
+                table.setType(column, typeMap.get(column));
+            } else if (column.toLowerCase().startsWith("max(")) {
+                resRow.add(column, row.getObject(column));
+                table.setType(column, typeMap.get(column));
+            } else if (column.toLowerCase().startsWith("sum(")) {
+                resRow.add(column, row.getObject(column));
+                table.setType(column, typeMap.get(column));
+            } else if (column.toLowerCase().startsWith("count(")) {
+                resRow.add(column, 1);
+                table.setType(column, RowType.INT);
+            } else if (column.toLowerCase().startsWith("avg(")) {
+                String colName = column.substring(4, column.lastIndexOf(')'));
+                resRow.add(column, row.getObject(colName));
+                resRow.add("count(" + colName + ")", 1);
+                table.setType(column, typeMap.get(column));
+                table.setType("count(" + colName + ")", RowType.INT);
+            } else {
+                resRow.add(column, row.getObject(column));
+                table.setType(column, typeMap.get(column));
+            }
+        }
+
+        return resRow;
+    }
+
     //TODO фикс тип данных NULL, хотелось бы иметь все таки Int и занчение null, а не тип данных null
     //TODO не поддерживается если столбец был в group by и он без аггрегационной функции
     private static Object mergeValues(Row a, Row b, String column, Map<String, RowType> typeMap) {
-//        if (typeMap.get(column) != RowType.NULL && typeMap.get(column) != RowType.NULL && a.getType(column) != b.getType(column)) {
-//            throw new IllegalStateException("Types of values are not equal:" + a.getObject(column) + " and " + b.getObject(column));
-//        }
-
         switch (typeMap.get(column)) {
             case NULL:
-//                if (b.getType(column) == RowType.NULL) {
-//                    return null;
-//                } else {
-//                    return b.getObject(column);
-//                }
                 return b.getObject(column);
             case STRING:
-//                if (b.getType(column) == RowType.NULL) {
-//                    return a.getObject(column);
-//                } else {
-//                    return mergeStrings(a.getObject(column), b.getObject(column), column);
-//                }
-                mergeStrings(a.getObject(column), b.getObject(column), column);
+                return mergeStrings(a.getObject(column), b.getObject(column), column);
             case BOOLEAN:
-//                if (b.getType(column) == RowType.NULL) {
-//                    return a.getObject(column);
-//                } else {
-//                    return mergeBools(a.getObject(column), b.getObject(column), column);
-//                }
-                mergeBools(a.getObject(column), b.getObject(column), column);
+                return mergeBools(a.getObject(column), b.getObject(column), column);
             case DATE:
-//                if (b.getType(column) == RowType.NULL) {
-//                    return a.getObject(column);
-//                } else {
-//                    return mergeDates(a, b, column);
-//                }
                 return mergeDates(a.getObject(column), b.getObject(column), column);
             case DOUBLE:
-//                if (b.getType(column) == RowType.NULL) {
-//                    return a.getObject(column);
-//                } else {
-//                    return mergeDoubles(a, b, column);
-//                }
-                mergeDoubles(a.getObject(column), b.getObject(column), column);
+                return mergeDoubles(a.getObject(column), b.getObject(column), column);
             case INT:
-//                if (b.getType(column) == RowType.NULL) {
-//                    return a.getObject(column);
-//                } else {
-//                    return mergeInts(a, b, column);
-//                }
-                mergeInts(a.getObject(column), b.getObject(column), column);
+                return mergeInts(a.getObject(column), b.getObject(column), column);
             default:
                 throw new IllegalStateException("Unsupported type of column: " + column);
         }
+    }
+
+    //TODO протестировать, когда в таблице нет занчений (чтобы не было деления на ноль)
+    private static Double avg(Double avgA, Integer countA, Double avgB, Integer countB) {
+        if (avgA == null) {
+            avgA = 0.0;
+            countA = 1;
+        }
+
+        if (avgB == null) {
+            avgB = 0.0;
+            countB = 1;
+        }
+
+        return (avgA * countA + avgB * countB) / (countA + countB);
     }
 
     private static Object mergeInts(Object a, Object b, String column) {

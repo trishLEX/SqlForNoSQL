@@ -351,6 +351,10 @@ public class SqlHolder {
         additionalSelectItemsStrings.addAll(item);
     }
 
+    public void addAdditionalItemString(String item) {
+        additionalSelectItemsStrings.add(item);
+    }
+
     public List<String> getSelectIdents() {
         return selectItemsStrings.stream().map(this::getIdentFromItem).collect(Collectors.toList());
     }
