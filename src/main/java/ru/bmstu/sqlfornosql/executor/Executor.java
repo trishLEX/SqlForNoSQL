@@ -104,7 +104,7 @@ public class Executor {
                 }
 
                 if (sqlHolder.getWhereClause() != null) {
-                    HashMap<String, Integer> colMapping = getIdentMapping(sqlHolder.getWhereClause().toString());
+                    HashMap<String, Integer> colMapping = getIdentMapping(sqlHolder.getWhereClause().toString().toLowerCase());
                     RowJEP sqljep = prepareSqlJEP(sqlHolder.getWhereClause(), colMapping);
                     Comparable[] values = new Comparable[colMapping.size()];
 

@@ -1,5 +1,6 @@
 package ru.bmstu.sqlfornosql.adapters.sql;
 
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
@@ -198,10 +199,22 @@ public class SqlHolder {
             holder.selectItemMap.put(holder.fromItem, Lists.newArrayList());
 
             for (SelectItem column : holder.selectItems) {
-                boolean existsInVisibleColumns = visibleColumns.contains(column);
+                boolean existsInVisibleColumns;
+                if (visibleColumns.size() == 1 && visibleColumns.get(0) instanceof AllColumns) {
+                    existsInVisibleColumns = subSelects.stream()
+                            .map(s -> (PlainSelect) s.getSelectBody())
+                            .map(PlainSelect::getFromItem)
+                            .anyMatch(from -> column.toString().startsWith(from.toString()));
+                } else {
+                    existsInVisibleColumns =visibleColumns.contains(column);
+                }
                 if (existsInVisibleColumns) {
                     SubSelect subSelect = columnToSubSelect.get(column);
-                    if (holder.selectItemMap.containsKey(subSelect)) {
+                    if (columnToSubSelect.size() == 1 && columnToSubSelect.keySet().stream().map(SelectItem::toString).anyMatch(c -> c.equals("*"))) {
+                        subSelect = Iterables.getOnlyElement(columnToSubSelect.values());
+                    }
+                    if (columnToSubSelect.keySet().stream().map(SelectItem::toString).anyMatch(c -> c.equals("*"))
+                            || holder.selectItemMap.containsKey(subSelect)) {
                         holder.selectItemMap.get(subSelect).add(column);
                     } else {
                         holder.selectItemMap.put(subSelect, Lists.newArrayList(column));

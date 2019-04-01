@@ -95,4 +95,22 @@ public class ExecutorTest {
         Table table = executor.execute(query);
         System.out.println(table);
     }
+
+    @Test
+    public void groupBySubSelectWithWhere() {
+        String query = "SELECT sum(postgres.postgres.test.test.intField) FROM" +
+                " (SELECT * FROM postgres.postgres.test.test) WHERE postgres.postgres.test.test.intField = 123 " +
+                "GROUP BY postgres.postgres.test.test.intField";
+
+        Table table = executor.execute(query);
+        System.out.println(table);
+    }
+
+    @Test
+    public void joinWithSubSelect() {
+        String query = "SELECT postgres.postgres.test.test.intField, mongodb.test.test.dateField FROM (SELECT * FROM postgres.postgres.test.test) " +
+                "JOIN mongodb.test.test ON postgres.postgres.test.test.intField = mongodb.test.test.intField";
+        Table table = executor.execute(query);
+        System.out.println(table);
+    }
 }
