@@ -39,7 +39,6 @@ public class SqlHolder {
     private Map<FromItem, List<SelectItem>> selectItemMap;
     private Map<String, String> qualifiedNamesMap;
 
-    @Nullable
     private DatabaseName database;
 
     public SqlHolder() {
@@ -292,15 +291,16 @@ public class SqlHolder {
     }
 
     public void updateSelectItems() {
-        selectItemsStrings.forEach(col -> {
-            qualifiedNamesMap.put(MongoUtils.makeMongoColName(col).toLowerCase(), col);
-            String selectItem = selectItemsStrings.get(selectItemsStrings.indexOf(col));
-            selectItem += "AS " + MongoUtils.makeMongoColName(col);
-            selectItemsStrings.set(selectItemsStrings.indexOf(col), selectItem);
-        });
+        if (!isSelectAll) {
+            selectItemsStrings.forEach(col -> {
+                qualifiedNamesMap.put(MongoUtils.makeMongoColName(col).toLowerCase(), col);
+                String selectItem = selectItemsStrings.get(selectItemsStrings.indexOf(col));
+                selectItem += " AS " + MongoUtils.makeMongoColName(col);
+                selectItemsStrings.set(selectItemsStrings.indexOf(col), selectItem);
+            });
+        }
     }
 
-    @Nullable
     public DatabaseName getDatabase() {
         return database;
     }
@@ -356,24 +356,7 @@ public class SqlHolder {
     }
 
     public List<String> getSelectIdents() {
-        return selectItemsStrings.stream().map(this::getIdentFromItem).collect(Collectors.toList());
-    }
-    
-    private String getIdentFromItem(String item) {
-        if (item.startsWith("sum(")
-                || item.startsWith("avg(")
-                || item.startsWith("min(")
-                || item.startsWith("max(")) {
-            return item.substring(4, item.length() - 1);
-        } else if (item.startsWith("count(")) {
-            if (item.contains("*")){
-                return "count";
-            } else {
-                return item.substring(6, item.length() - 1);
-            }
-        } else {
-            return item;
-        }
+        return selectItemsStrings.stream().map(SqlUtils::getIdentFromSelectItem).collect(Collectors.toList());
     }
 
     public List<Join> getJoins() {
@@ -442,8 +425,12 @@ public class SqlHolder {
 
         if (fromItem != null) {
             sb.append(" FROM ");
-            String from = ((Table) fromItem).getFullyQualifiedName();
-            sb.append(from.substring(from.indexOf('.') + 1));
+            if (fromItem instanceof Table) {
+                String from = ((Table) fromItem).getFullyQualifiedName();
+                sb.append(from.substring(from.indexOf('.') + 1));
+            } else {
+                sb.append(fromItem.toString());
+            }
         }
 
         for (Join join : joins) {
@@ -522,7 +509,11 @@ public class SqlHolder {
 
         if (fromItem != null) {
             sb.append(" FROM ");
-            sb.append(((Table) fromItem).getFullyQualifiedName());
+            if (fromItem instanceof Table) {
+                sb.append(((Table) fromItem).getFullyQualifiedName());
+            } else {
+                sb.append(fromItem.toString());
+            }
         }
 
         for (Join join : joins) {

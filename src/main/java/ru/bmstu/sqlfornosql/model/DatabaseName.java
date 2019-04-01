@@ -1,8 +1,13 @@
 package ru.bmstu.sqlfornosql.model;
 
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
+
+@ParametersAreNonnullByDefault
 public class DatabaseName {
     private DbType dbType;
     private String database;
+    @Nullable
     private String schema;
     private String table;
 
@@ -34,11 +39,23 @@ public class DatabaseName {
         return database;
     }
 
+    @Nullable
     public String getSchema() {
         return schema;
     }
 
     public String getTable() {
         return table;
+    }
+
+    @Override
+    public String toString() {
+        String res = dbType.name().toLowerCase() + "." + database;
+        if (schema != null) {
+            res += "." + schema;
+        }
+
+        res += "." + table;
+        return res;
     }
 }

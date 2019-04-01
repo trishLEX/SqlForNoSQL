@@ -28,7 +28,7 @@ public class PostgresMapper {
                         row.add(column, getPostgresValue(resultSet, i, type));
                         typeMap.put(column, type);
                     } else {
-                        String column = metaData.getColumnName(i);
+                        String column = query.getDatabase().toString() + "." + metaData.getColumnName(i);
                         row.add(column, getPostgresValue(resultSet, i, type));
                         typeMap.put(column, type);
                     }
@@ -75,7 +75,7 @@ public class PostgresMapper {
         try {
             switch (type) {
                 case INT:
-                    return resultSet.getLong(column);
+                    return resultSet.getInt(column);
                 case DOUBLE:
                     return resultSet.getDouble(column);
                 case DATE:

@@ -287,4 +287,21 @@ public class SqlUtils {
             throw new IllegalArgumentException("Can't parse statement: " + sql, e);
         }
     }
+
+    public static String getIdentFromSelectItem(String item) {
+        if (item.startsWith("sum(")
+                || item.startsWith("avg(")
+                || item.startsWith("min(")
+                || item.startsWith("max(")) {
+            return item.substring(4, item.length() - 1);
+        } else if (item.startsWith("count(")) {
+            if (item.contains("*")){
+                return "count";
+            } else {
+                return item.substring(6, item.length() - 1);
+            }
+        } else {
+            return item;
+        }
+    }
 }

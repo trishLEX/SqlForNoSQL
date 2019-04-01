@@ -18,7 +18,7 @@ public class ExecutorUtils {
         int index = 0;
         while (matcher.find()) {
             if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
-                mapping.put(matcher.group(1), index++);
+                mapping.put(matcher.group(1).toLowerCase(), index++);
             }
         }
 
@@ -26,7 +26,7 @@ public class ExecutorUtils {
     }
 
     public static RowJEP prepareSqlJEP(Expression expression, HashMap<String, Integer> colMapping) {
-        RowJEP sqljep = new RowJEP(expression.toString());
+        RowJEP sqljep = new RowJEP(expression.toString().toLowerCase());
         try {
             sqljep.parseExpression(colMapping);
         } catch (ParseException e) {
@@ -38,5 +38,9 @@ public class ExecutorUtils {
 
     public static Comparable getValue(Row row, String key) {
         return (Comparable) row.getObject(key);
+    }
+
+    public static Comparable getValueKeyIgnoreCase(Row row, String key) {
+        return (Comparable) row.getObject(key.toLowerCase());
     }
 }

@@ -110,6 +110,6 @@ public class Row {
 
     @Override
     public String toString() {
-        return "{" + Joiner.on(", ").withKeyValueSeparator(": ").join(values) + "}";
+        return "{" + Joiner.on(", ").withKeyValueSeparator(": ").useForNull("null").join(values) + "}";
     }
 }

@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 
 public class Executor {
+    //TODO вводится правило, что работаем только с lowerCase'ми
     static final Pattern IDENT_REGEXP = Pattern.compile("([a-zA-Z]+[0-9a-zA-Z.]*)");
 
     static final Set<String> FORBIDDEN_STRINGS = ImmutableSet.of(
@@ -97,8 +98,9 @@ public class Executor {
             for (Row subSelectRow : subSelectResult.getRows()) {
                 Row row = new Row(result);
                 for (String column : sqlHolder.getSelectItemsStrings()) {
-                    row.add(column, subSelectRow.getObject(column));
-                    result.setType(column, subSelectResult.getType(column));
+                    String ident = SqlUtils.getIdentFromSelectItem(column.toLowerCase());
+                    row.add(ident, subSelectRow.getObject(ident));
+                    result.setType(ident, subSelectResult.getType(ident));
                 }
 
                 if (sqlHolder.getWhereClause() != null) {
@@ -107,7 +109,7 @@ public class Executor {
                     Comparable[] values = new Comparable[colMapping.size()];
 
                     for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
-                        values[colMappingEntry.getValue()] = getValue(row, colMappingEntry.getKey());
+                        values[colMappingEntry.getValue()] = getValueKeyIgnoreCase(row, colMappingEntry.getKey());
                     }
 
                     try {

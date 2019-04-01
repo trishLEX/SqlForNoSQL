@@ -7,6 +7,7 @@ import ru.bmstu.sqlfornosql.model.Table;
 import java.util.regex.Matcher;
 
 public class ExecutorTest {
+    //TODO в тестах сделать assert на кол-во элементов
     private Executor executor;
 
     @Before
@@ -76,6 +77,21 @@ public class ExecutorTest {
         String query = "SELECT mongodb.test.test.intField, postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
                 "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField " +
                 "WHERE mongodb.test.test.intField + postgres.test.test.intField = 246";
+        Table table = executor.execute(query);
+        System.out.println(table);
+    }
+
+    @Test
+    public void simpleSubSelect() {
+        String query = "SELECT postgres.postgres.test.test.intField FROM (SELECT * FROM postgres.postgres.test.test) WHERE postgres.postgres.test.test.intField = 123";
+        Table table = executor.execute(query);
+        System.out.println(table);
+    }
+
+    @Test
+    public void groupBySubSelect() {
+        String query = "SELECT sum(postgres.postgres.test.test.intField) FROM" +
+                " (SELECT * FROM postgres.postgres.test.test) GROUP BY postgres.postgres.test.test.intField";
         Table table = executor.execute(query);
         System.out.println(table);
     }

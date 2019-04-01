@@ -3,6 +3,7 @@ package ru.bmstu.sqlfornosql.executor;
 import net.sf.jsqlparser.expression.Expression;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
@@ -24,7 +25,7 @@ public class Grouper {
         for (Row row : table.getRows()) {
             Map<String, Object> indexEntry = new HashMap<>();
             for (String column : groupBys) {
-                indexEntry.put(column, row.getObject(column));
+                indexEntry.put(column, row.getObject(column.toLowerCase()));
             }
 
             if (index.containsKey(indexEntry)) {
@@ -54,7 +55,7 @@ public class Grouper {
                     throw new IllegalStateException("Can't execute expression: " + havingClause, e);
                 }
             } else {
-                table.add(row);
+                result.add(row);
             }
         }
 
@@ -88,15 +89,16 @@ public class Grouper {
     private static Row defaultRow(Row row, Collection<String> columns, Map<String, RowType> typeMap, Table table) {
         Row resRow = new Row(table);
         for (String column : columns) {
+            column = column.toLowerCase();
             if (column.toLowerCase().startsWith("min(")) {
-                resRow.add(column, row.getObject(column));
-                table.setType(column, typeMap.get(column));
+                resRow.add(column, row.getObject(SqlUtils.getIdentFromSelectItem(column)));
+                table.setType(column, typeMap.get(SqlUtils.getIdentFromSelectItem(column)));
             } else if (column.toLowerCase().startsWith("max(")) {
-                resRow.add(column, row.getObject(column));
-                table.setType(column, typeMap.get(column));
+                resRow.add(column, row.getObject(SqlUtils.getIdentFromSelectItem(column)));
+                table.setType(column, typeMap.get(SqlUtils.getIdentFromSelectItem(column)));
             } else if (column.toLowerCase().startsWith("sum(")) {
-                resRow.add(column, row.getObject(column));
-                table.setType(column, typeMap.get(column));
+                resRow.add(column, row.getObject(SqlUtils.getIdentFromSelectItem(column)));
+                table.setType(column, typeMap.get(SqlUtils.getIdentFromSelectItem(column)));
             } else if (column.toLowerCase().startsWith("count(")) {
                 resRow.add(column, 1);
                 table.setType(column, RowType.INT);
@@ -118,19 +120,21 @@ public class Grouper {
     //TODO фикс тип данных NULL, хотелось бы иметь все таки Int и занчение null, а не тип данных null
     //TODO не поддерживается если столбец был в group by и он без аггрегационной функции
     private static Object mergeValues(Row a, Row b, String column, Map<String, RowType> typeMap) {
-        switch (typeMap.get(column)) {
+        String columnA = SqlUtils.getIdentFromSelectItem(column.toLowerCase());
+        column = column.toLowerCase();
+        switch (typeMap.get(columnA)) {
             case NULL:
                 return b.getObject(column);
             case STRING:
-                return mergeStrings(a.getObject(column), b.getObject(column), column);
+                return mergeStrings(a.getObject(columnA), b.getObject(column), column);
             case BOOLEAN:
-                return mergeBools(a.getObject(column), b.getObject(column), column);
+                return mergeBools(a.getObject(columnA), b.getObject(column), column);
             case DATE:
-                return mergeDates(a.getObject(column), b.getObject(column), column);
+                return mergeDates(a.getObject(columnA), b.getObject(column), column);
             case DOUBLE:
-                return mergeDoubles(a.getObject(column), b.getObject(column), column);
+                return mergeDoubles(a.getObject(columnA), b.getObject(column), column);
             case INT:
-                return mergeInts(a.getObject(column), b.getObject(column), column);
+                return mergeInts(a.getObject(columnA), b.getObject(column), column);
             default:
                 throw new IllegalStateException("Unsupported type of column: " + column);
         }
