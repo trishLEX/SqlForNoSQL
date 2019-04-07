@@ -82,6 +82,7 @@ public class ExecutorTest {
     }
 
     @Test
+    //TODO !!!
     public void simpleSubSelect() {
         String query = "SELECT postgres.postgres.test.test.intField FROM (SELECT * FROM postgres.postgres.test.test) WHERE postgres.postgres.test.test.intField = 123";
         Table table = executor.execute(query);

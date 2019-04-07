@@ -101,7 +101,7 @@ public class MongoUtils {
                 break;
             case "count":
                 if (field != null){
-                    document.put("count" + "_" + field, new Document("$sum", 1));
+                    document.put("count" + "(" + field + ")", new Document("$sum", 1));
                 } else {
                     document.put("count", new Document("$sum", 1));
                 }
@@ -122,12 +122,12 @@ public class MongoUtils {
                 || sqlName.startsWith("avg(")
                 || sqlName.startsWith("min(")
                 || sqlName.startsWith("max(")) {
-            return sqlName.substring(0, 3) + "_" + getNonQualifiedName(sqlName.substring(4, sqlName.length() - 1));
+            return sqlName.substring(0, 3) + "(" + getNonQualifiedName(sqlName.substring(4, sqlName.length() - 1)) + ")";
         } else if (sqlName.startsWith("count(")) {
             if (sqlName.contains("*")){
                 return "count";
             } else {
-                return sqlName.substring(0, 5) + "_" + getNonQualifiedName(sqlName.substring(6, sqlName.length() - 1));
+                return sqlName.substring(0, 5) + "(" + getNonQualifiedName(sqlName.substring(6, sqlName.length() - 1)) + ")";
             }
         } else {
             return getNonQualifiedName(sqlName);
@@ -136,7 +136,7 @@ public class MongoUtils {
 
     private static void createFunction(String functionName, String field, Document document, Object value) {
         Preconditions.checkArgument(field != null,"function "+ functionName + " must contain a single field to run on");
-        document.put(functionName + "_" + field, new Document("$" + functionName, value));
+        document.put(functionName + "(" + field + ")", new Document("$" + functionName, value));
     }
 
     public static Document createSortInfoFromOrderByElements(List<OrderByElement> orderByElements, MongoHolder mongoHolder) {

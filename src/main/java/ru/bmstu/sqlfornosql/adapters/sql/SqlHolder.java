@@ -5,13 +5,17 @@ import com.google.common.collect.Lists;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
-import ru.bmstu.sqlfornosql.adapters.mongo.MongoUtils;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 import ru.bmstu.sqlfornosql.model.DatabaseName;
 
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static ru.bmstu.sqlfornosql.adapters.sql.selectfield.AllColumns.ALL_COLUMNS;
 
 @ParametersAreNonnullByDefault
 public class SqlHolder {
@@ -28,8 +32,6 @@ public class SqlHolder {
     @Nullable
     private Expression whereClause;
     private List<SelectItem> selectItems;
-    private List<String> selectItemsStrings;
-    private List<String> additionalSelectItemsStrings;
     private List<Join> joins;
     private List<String> groupBys;
 
@@ -38,7 +40,8 @@ public class SqlHolder {
     private List<OrderByElement> orderByElements;
 
     private Map<FromItem, List<SelectItem>> selectItemMap;
-    private Map<String, String> qualifiedNamesMap;
+    private List<SelectField> selectFields;
+    private List<SelectField> additionalSelectFields;
 
     private DatabaseName database;
 
@@ -49,12 +52,13 @@ public class SqlHolder {
         limit = -1;
         offset = -1;
         selectItems = new ArrayList<>();
-        additionalSelectItemsStrings = new ArrayList<>();
         joins = new ArrayList<>();
+        //TODO перевести спискок group by на список Column
         groupBys = new ArrayList<>();
         orderByElements = new ArrayList<>();
         selectItemMap = new LinkedHashMap<>();
-        qualifiedNamesMap = new HashMap<>();
+        selectFields = new ArrayList<>();
+        additionalSelectFields = new ArrayList<>();
     }
 
     public static class SqlHolderBuilder {
@@ -107,16 +111,16 @@ public class SqlHolder {
         public SqlHolderBuilder withSelectItems(@Nullable List<SelectItem> selectItems) {
             if (selectItems != null) {
                 holder.selectItems = selectItems;
-                holder.selectItemsStrings = getSelectItemsStringFromSelectItems(selectItems);
+                holder.selectFields = getSelectFieldsFromSelectItems(selectItems);
 
-                holder.isSelectAll = holder.selectItemsStrings.contains("*");
+                holder.isSelectAll = holder.selectFields.contains(ALL_COLUMNS);
             }
             return this;
         }
 
-        private List<String> getSelectItemsStringFromSelectItems(List<SelectItem> selectItems) {
+        private List<SelectField> getSelectFieldsFromSelectItems(List<SelectItem> selectItems) {
             return selectItems.stream()
-                    .map(this::getStringFromSelectItem)
+                    .map(item -> SqlUtils.getSelectFieldFromString(item.toString()))
                     .collect(Collectors.toList());
         }
 
@@ -162,11 +166,6 @@ public class SqlHolder {
         }
 
         public SqlHolder build() {
-            holder.selectItemsStrings.forEach(col -> holder.qualifiedNamesMap.put(
-                    col.contains(".") ? col.substring(col.lastIndexOf(".") + 1).toLowerCase() : col.toLowerCase(),
-                    col)
-            );
-
             List<SubSelect> subSelects = new ArrayList<>();
             List<Table> tables = new ArrayList<>();
             if (holder.fromItem != null) {
@@ -206,7 +205,7 @@ public class SqlHolder {
                             .map(PlainSelect::getFromItem)
                             .anyMatch(from -> column.toString().startsWith(from.toString()));
                 } else {
-                    existsInVisibleColumns =visibleColumns.contains(column);
+                    existsInVisibleColumns = visibleColumns.contains(column);
                 }
                 if (existsInVisibleColumns) {
                     SubSelect subSelect = columnToSubSelect.get(column);
@@ -221,7 +220,7 @@ public class SqlHolder {
                     }
                 }
 
-                if (!holder.selectItemsStrings.equals(Collections.singletonList("*"))) {
+                if (!holder.isSelectAll) {
                     String columnStr = getStringFromSelectItem(column);
                     String columnPrefix;
                     if (columnStr.contains(".")) {
@@ -305,12 +304,21 @@ public class SqlHolder {
 
     public void updateSelectItems() {
         if (!isSelectAll) {
-            selectItemsStrings.forEach(col -> {
-                qualifiedNamesMap.put(MongoUtils.makeMongoColName(col).toLowerCase(), col);
-                String selectItem = selectItemsStrings.get(selectItemsStrings.indexOf(col));
-                selectItem += " AS " + MongoUtils.makeMongoColName(col);
-                selectItemsStrings.set(selectItemsStrings.indexOf(col), selectItem);
-            });
+//            selectItemsStrings.forEach(col -> {
+//                qualifiedNamesMap.put(MongoUtils.makeMongoColName(col).toLowerCase(), col);
+//                String selectItem = selectItemsStrings.get(selectItemsStrings.indexOf(col));
+//                selectItem += " AS " + MongoUtils.makeMongoColName(col);
+//                selectItemsStrings.set(selectItemsStrings.indexOf(col), selectItem);
+//            });
+            for (SelectField selectField : selectFields) {
+                if (selectField instanceof Column) {
+                    Column column = (Column) selectField;
+                    column.setAlias(column.getNonQualifiedContent());
+                } else if (selectField instanceof SelectFieldExpression) {
+                    SelectFieldExpression expression = (SelectFieldExpression) selectField;
+                    expression.setAlias(expression.getNonQualifiedContent());
+                }
+            }
         }
     }
 
@@ -352,24 +360,20 @@ public class SqlHolder {
         return selectItems;
     }
 
-    public List<String> getSelectItemsStrings() {
-        return selectItemsStrings;
+    public List<SelectField> getSelectFields() {
+        return selectFields;
     }
 
-    public List<String> getAdditionalSelectItemsStrings() {
-        return additionalSelectItemsStrings;
+    public List<SelectField> getAdditionalSelectFields() {
+        return additionalSelectFields;
     }
 
-    public void addAllAdditionalItemStrings(List<String> item) {
-        additionalSelectItemsStrings.addAll(item);
-    }
-
-    public void addAdditionalItemString(String item) {
-        additionalSelectItemsStrings.add(item);
+    public void addAllAdditionalSelectFields(List<Column> item) {
+        additionalSelectFields.addAll(item);
     }
 
     public List<String> getSelectIdents() {
-        return selectItemsStrings.stream().map(SqlUtils::getIdentFromSelectItem).collect(Collectors.toList());
+        return selectFields.stream().map(SelectField::getQualifiedIdent).collect(Collectors.toList());
     }
 
     public List<Join> getJoins() {
@@ -393,8 +397,14 @@ public class SqlHolder {
         return selectItemMap;
     }
 
-    public Map<String, String> getQualifiedNamesMap() {
-        return qualifiedNamesMap;
+    public SelectField getFieldByNonQualifiedName(String name) {
+        for (SelectField field : selectFields) {
+            if (field.getNonQualifiedContent().equals(name)) {
+                return field;
+            }
+        }
+
+        throw new NoSuchElementException("No field with name: " + name + " in select items");
     }
 
     private String getStringFromJoin(Join join) {
@@ -465,8 +475,14 @@ public class SqlHolder {
 
         addDistinct(sb);
 
-        Set<String> selectItems = new LinkedHashSet<>(selectItemsStrings);
-        selectItems.addAll(additionalSelectItemsStrings);
+        Set<String> selectItems = selectFields.stream()
+                .map(SelectField::getQualifiedContent)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        selectItems.addAll(additionalSelectFields.stream()
+                .map(SelectField::getQualifiedContent)
+                .collect(Collectors.toSet())
+        );
         sb.append(String.join(", ", selectItems));
     }
 

@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 import ru.bmstu.sqlfornosql.model.Table;
 
 import java.util.ArrayList;
@@ -30,8 +31,11 @@ public class MongoClient<T extends BsonDocument> {
             throw new UnsupportedOperationException();
 //            return collection.distinct(getDistinctFieldName(query), query.getQuery(), clazz);
         } else if (query.isCountAll()) {
+            logger.debug("EXECUTING COUNT ALL QUERY: " + query);
             return mapper.mapCountAll(collection.countDocuments(query.getQuery()), query);
-        } else if (query.getGroupBys().size() > 0) {
+        } else if (query.getGroupBys().size() > 0 ||
+                query.getSelectFields().stream().allMatch(field -> field instanceof SelectFieldExpression)
+        ) {
             logger.debug("EXECUTING GROUP BY QUERY: " + query);
             List<Document> documents = new ArrayList<>();
 

@@ -42,7 +42,19 @@ public class MongoConverterTest {
         System.out.println(client.executeQuery(adapter.translate("SELECT count(*) FROM mongodb.test.test WHERE test.intField = 123")));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
+    public void selectCountAndSumField() {
+        MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
+        System.out.println(client.executeQuery(adapter.translate("SELECT count(test.intField), sum(test.intField) FROM mongodb.test.test")));
+    }
+
+    @Test
+    public void selectCountFieldWhere() {
+        MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
+        System.out.println(client.executeQuery(adapter.translate("SELECT count(test.intField) FROM mongodb.test.test WHERE test.intField = 123")));
+    }
+
+    @Test(expected = IllegalStateException.class)
     public void simpleSelectSumException() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
         System.out.println(client.executeQuery(adapter.translate("SELECT sum(test.intField), test FROM mongodb.test.test WHERE test.intField = 123")));
@@ -88,6 +100,12 @@ public class MongoConverterTest {
     public void selectWithQualifiedName() {
         MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
         System.out.println(client.executeQuery(adapter.translate("SELECT test.intField FROM mongodb.test.test")));
+    }
+
+    @Test
+    public void selectAll(){
+        MongoClient<BsonDocument> client = new MongoClient<>(mongoDatabase.getCollection("test", BsonDocument.class));
+        System.out.println(client.executeQuery(adapter.translate("SELECT * FROM mongodb.test.test")));
     }
 
     @After

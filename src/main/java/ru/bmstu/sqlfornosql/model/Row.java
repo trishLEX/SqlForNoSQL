@@ -96,7 +96,10 @@ public class Row {
 
     public void remove(Collection<String> keys) {
         for (String key : keys) {
-            values.remove(key);
+            Object removed = values.remove(key);
+            if (removed == null) {
+                values.remove(key.toLowerCase());
+            }
         }
     }
 

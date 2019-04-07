@@ -65,7 +65,14 @@ public class Table {
     }
 
     public void remove(Collection<String> keys) {
-        columns.removeAll(keys);
+        for (String key : keys) {
+            boolean removed = columns.remove(key);
+            typeMap.remove(key);
+            if (!removed) {
+                columns.remove(key.toLowerCase());
+                typeMap.remove(key.toLowerCase());
+            }
+        }
         for (Row row : rows) {
             row.remove(keys);
         }

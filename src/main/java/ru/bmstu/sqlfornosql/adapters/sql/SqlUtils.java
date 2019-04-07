@@ -15,6 +15,9 @@ import org.bson.Document;
 import ru.bmstu.sqlfornosql.adapters.mongo.DateFunction;
 import ru.bmstu.sqlfornosql.adapters.mongo.ObjectIdFunction;
 import ru.bmstu.sqlfornosql.adapters.mongo.WhereClauseParser;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SqlFunction;
 
 import java.math.BigInteger;
 import java.util.Collections;
@@ -95,6 +98,39 @@ public class SqlUtils {
 
     public static String getStringValue(Expression expression) {
         return getStringValue(expression, false);
+    }
+
+    public static SelectField getSelectFieldFromString(String field) {
+        if (field.equals("*")) {
+            return ru.bmstu.sqlfornosql.adapters.sql.selectfield.AllColumns.ALL_COLUMNS;
+        } else if (field.startsWith("sum(")) {
+            return new SelectFieldExpression(
+                    SqlFunction.SUM,
+                    field.substring(4, field.length() - 1)
+            );
+        } else if (field.startsWith("avg(")) {
+            return new SelectFieldExpression(
+                    SqlFunction.AVG,
+                    field.substring(4, field.length() - 1)
+            );
+        } else if (field.startsWith("min(")) {
+            return new SelectFieldExpression(
+                    SqlFunction.MIN,
+                    field.substring(4, field.length() - 1)
+            );
+        } else if (field.startsWith("max(")) {
+            return new SelectFieldExpression(
+                    SqlFunction.MAX,
+                    field.substring(4, field.length() - 1)
+            );
+        } else if (field.startsWith("count(")) {
+            return new SelectFieldExpression(
+                    SqlFunction.COUNT,
+                    field.substring(6, field.length() - 1)
+            );
+        } else {
+            return new ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column(field);
+        }
     }
 
     public static List<String> getGroupBy(List<Expression> groupByColumnReferences) {

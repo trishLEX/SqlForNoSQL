@@ -4,11 +4,12 @@ import one.util.streamex.StreamEx;
 import org.bson.Document;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 public class MongoHolder {
@@ -24,12 +25,10 @@ public class MongoHolder {
     private boolean countAll;
     private boolean selectAll;
     private List<String> groupBys;
-    private List<String> selectFields;
+    private List<SelectField> selectFields;
     private boolean hasAggregateFunctions;
     private long limit;
     private long offset;
-
-    private Map<String, String> qualifiedNameMap;
 
     private MongoHolder() {
         query = new Document();
@@ -42,8 +41,6 @@ public class MongoHolder {
         hasAggregateFunctions = false;
         limit = -1;
         offset = -1;
-
-        qualifiedNameMap = new HashMap<>();
     }
 
     public MongoHolder(String database, String table) {
@@ -56,24 +53,19 @@ public class MongoHolder {
         MongoHolder mongoHolder = new MongoHolder(sqlHolder.getDatabase().getDatabaseName(), sqlHolder.getDatabase().getTable());
 
         mongoHolder.selectAll = sqlHolder.isSelectAll();
+        mongoHolder.countAll = sqlHolder.isCountAll();
 
-        if (!mongoHolder.selectAll) {
-            sqlHolder.getSelectItemsStrings().forEach(col -> mongoHolder.qualifiedNameMap.put(MongoUtils.makeMongoColName(col), col));
-        }
-
-        mongoHolder.selectFields = sqlHolder.getSelectItemsStrings()
-                .stream()
-                .map(MongoUtils::makeMongoColName)
-                .collect(Collectors.toList());
+        mongoHolder.selectFields = sqlHolder.getSelectFields();
 
         if (sqlHolder.isDistinct()) {
-                mongoHolder.groupBys = StreamEx.of(sqlHolder.getSelectItemsStrings().stream())
+                mongoHolder.groupBys = StreamEx.of(sqlHolder.getSelectFields())
+                        .map(SelectField::getNonQualifiedContent)
                         .append(sqlHolder.getGroupBys().stream())
                         .map(name -> name.contains(".") ? name.substring(name.lastIndexOf('.') + 1) : name)
                         .collect(Collectors.toList());
 
                 mongoHolder.projection = MongoUtils.createProjectionsFromSelectItems(sqlHolder.getSelectItems(), mongoHolder);
-        } else if (!sqlHolder.getGroupBys().isEmpty()) {
+        } else if (!sqlHolder.getGroupBys().isEmpty() || sqlHolder.getSelectFields().stream().allMatch(field -> field instanceof SelectFieldExpression)) {
             mongoHolder.groupBys = sqlHolder.getGroupBys()
                     .stream()
                     .map(name -> name.contains(".") ? name.substring(name.lastIndexOf('.') + 1) : name)
@@ -85,13 +77,8 @@ public class MongoHolder {
             Document mongoProjection = new Document();
             mongoProjection.put(MONGO_ID, 0);
 
-            sqlHolder.getSelectItems().forEach(item -> {
-                String itemStr = item.toString();
-                if (itemStr.contains(".")) {
-                    mongoProjection.put(itemStr.substring(itemStr.lastIndexOf('.') + 1), 1);
-                } else {
-                    mongoProjection.put(item.toString(), 1);
-                }
+            sqlHolder.getSelectFields().forEach(item -> {
+                mongoProjection.put(item.getNonQualifiedContent(), 1);
             });
 
             mongoHolder.projection = mongoProjection;
@@ -156,7 +143,7 @@ public class MongoHolder {
         return groupBys;
     }
 
-    public List<String> getSelectFields() {
+    public List<SelectField> getSelectFields() {
         return selectFields;
     }
 
@@ -176,9 +163,15 @@ public class MongoHolder {
         this.hasAggregateFunctions = hasAggregateFunctions;
     }
 
-    public Map<String, String> getQualifiedNameMap() {
-        return qualifiedNameMap;
-    }
+   public SelectField getByNonQualifiedName(String name) {
+        for (SelectField selectField : selectFields) {
+            if (selectField.getNonQualifiedContent().equals(name)) {
+                return selectField;
+            }
+        }
+
+        throw new NoSuchElementException("No element with name: " + name + " in select fields");
+   }
 
     @Override
     public String toString() {
@@ -212,11 +205,11 @@ public class MongoHolder {
             }
         }
 
-        boolean hasAggregateFunctions = selectFields.stream().anyMatch(this::isFieldWithAggregationFunction);
+        boolean hasAggregateFunctions = selectFields.stream().anyMatch(selectField -> selectField instanceof SelectFieldExpression);
 
         if (hasAggregateFunctions) {
-            for (String selectField : selectFields) {
-                if (!groupBys.contains(selectField) && !isFieldWithAggregationFunction(selectField)) {
+            for (SelectField selectField : selectFields) {
+                if (!groupBys.contains(selectField.getQualifiedContent()) && !(selectField instanceof SelectFieldExpression)) {
                     throw new IllegalArgumentException("Column: " + selectField + " must be in group by or aggregation function");
                 }
             }

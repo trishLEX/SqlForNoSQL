@@ -4,6 +4,9 @@ import net.sf.jsqlparser.expression.Expression;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SqlFunction;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
@@ -19,7 +22,7 @@ import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 public class Grouper {
     //TODO Check that collections are sets
     //TODO having unsupported
-    public static Table group(Table table, Collection<String> groupBys, Collection<String> columns, @Nullable Expression havingClause) {
+    public static Table group(Table table, Collection<String> groupBys, Collection<SelectField> columns, @Nullable Expression havingClause) {
         Table result = new Table();
         Map<Map<String, Object>, Row> index = new HashMap<>();
         for (Row row : table.getRows()) {
@@ -62,10 +65,11 @@ public class Grouper {
         return result;
     }
 
-    private static Row mergeRows(Row a, Row b, Collection<String> columns, Collection<String> groupBys, Map<String, RowType> typeMap, Table table) {
+    private static Row mergeRows(Row a, Row b, Collection<SelectField> columns, Collection<String> groupBys, Map<String, RowType> typeMap, Table table) {
         Row row = new Row(table);
-        for (String column : columns) {
+        for (SelectField field : columns) {
             //TODO type должен определяться динамически (вдруг null и int были)
+            String column = field.getNonQualifiedContent();
             if (groupBys.contains(column)) {
                 System.out.println("should be equals: " + a.getObject(column) + " " + b.getObject(column));
                 row.add(column, typeMap.get(column));
@@ -86,32 +90,53 @@ public class Grouper {
         return row;
     }
 
-    private static Row defaultRow(Row row, Collection<String> columns, Map<String, RowType> typeMap, Table table) {
+    private static Row defaultRow(Row row, Collection<SelectField> columns, Map<String, RowType> typeMap, Table table) {
         Row resRow = new Row(table);
-        for (String column : columns) {
-            column = column.toLowerCase();
-            if (column.toLowerCase().startsWith("min(")) {
-                resRow.add(column, row.getObject(SqlUtils.getIdentFromSelectItem(column)));
-                table.setType(column, typeMap.get(SqlUtils.getIdentFromSelectItem(column)));
-            } else if (column.toLowerCase().startsWith("max(")) {
-                resRow.add(column, row.getObject(SqlUtils.getIdentFromSelectItem(column)));
-                table.setType(column, typeMap.get(SqlUtils.getIdentFromSelectItem(column)));
-            } else if (column.toLowerCase().startsWith("sum(")) {
-                resRow.add(column, row.getObject(SqlUtils.getIdentFromSelectItem(column)));
-                table.setType(column, typeMap.get(SqlUtils.getIdentFromSelectItem(column)));
-            } else if (column.toLowerCase().startsWith("count(")) {
-                resRow.add(column, 1);
-                table.setType(column, RowType.INT);
-            } else if (column.toLowerCase().startsWith("avg(")) {
-                String colName = column.substring(4, column.lastIndexOf(')'));
-                resRow.add(column, row.getObject(colName));
-                resRow.add("count(" + colName + ")", 1);
-                table.setType(column, typeMap.get(column));
-                table.setType("count(" + colName + ")", RowType.INT);
+        for (SelectField column : columns) {
+            if (column instanceof SelectFieldExpression) {
+                SelectFieldExpression expression = (SelectFieldExpression) column;
+                if (expression.getFunction() == SqlFunction.COUNT) {
+                    resRow.add(column.getNonQualifiedContent(), 1);
+                    table.setType(column.getNonQualifiedContent(), RowType.INT);
+                } else if (expression.getFunction() == SqlFunction.AVG) {
+                    resRow.add(column.getNonQualifiedContent(), row.getObject(expression.getColumn().getNonQualifiedContent()));
+                    table.setType(column.getNonQualifiedContent(), typeMap.get(expression.getColumn().getNonQualifiedContent()));
+
+                    resRow.add("count(" + expression.getColumn().getNonQualifiedContent() + ")", 1);
+                    table.setType("count(" + expression.getColumn().getNonQualifiedContent() + ")", RowType.INT);
+                } else {
+                    resRow.add(column.getNonQualifiedContent(), row.getObject(expression.getColumn().getNonQualifiedContent()));
+                    table.setType(column.getNonQualifiedContent(), typeMap.get(expression.getColumn().getNonQualifiedContent()));
+                }
             } else {
-                resRow.add(column, row.getObject(column));
-                table.setType(column, typeMap.get(column));
+                resRow.add(column.getNonQualifiedContent(), row.getObject(column.getNonQualifiedContent()));
+                table.setType(column.getNonQualifiedContent(), typeMap.get(column.getNonQualifiedContent()));
             }
+
+
+//            column = column.toLowerCase();
+//            if (column.toLowerCase().startsWith("min(")) {
+//                resRow.add(column, row.getObject(SqlUtils.getIdentFromSelectItem(column)));
+//                table.setType(column, typeMap.get(SqlUtils.getIdentFromSelectItem(column)));
+//            } else if (column.toLowerCase().startsWith("max(")) {
+//                resRow.add(column, row.getObject(SqlUtils.getIdentFromSelectItem(column)));
+//                table.setType(column, typeMap.get(SqlUtils.getIdentFromSelectItem(column)));
+//            } else if (column.toLowerCase().startsWith("sum(")) {
+//                resRow.add(column, row.getObject(SqlUtils.getIdentFromSelectItem(column)));
+//                table.setType(column, typeMap.get(SqlUtils.getIdentFromSelectItem(column)));
+//            } else if (column.toLowerCase().startsWith("count(")) {
+//                resRow.add(column, 1);
+//                table.setType(column, RowType.INT);
+//            } else if (column.toLowerCase().startsWith("avg(")) {
+//                String colName = column.substring(4, column.lastIndexOf(')'));
+//                resRow.add(column, row.getObject(colName));
+//                resRow.add("count(" + colName + ")", 1);
+//                table.setType(column, typeMap.get(column));
+//                table.setType("count(" + colName + ")", RowType.INT);
+//            } else {
+//                resRow.add(column, row.getObject(column));
+//                table.setType(column, typeMap.get(column));
+//            }
         }
 
         return resRow;

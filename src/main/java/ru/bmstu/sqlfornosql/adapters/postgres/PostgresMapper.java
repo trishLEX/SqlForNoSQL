@@ -5,14 +5,17 @@ import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static java.sql.Types.*;
 
+@ParametersAreNonnullByDefault
 public class PostgresMapper {
     public Table mapResultSet(ResultSet resultSet, SqlHolder query) {
         Table table = new Table();
@@ -24,11 +27,14 @@ public class PostgresMapper {
                 for (int i = 1; i <= metaData.getColumnCount(); i++) {
                     RowType type = getTypeFromSqlType(metaData.getColumnType(i));
                     if (!query.isSelectAll()) {
-                        String column = query.getQualifiedNamesMap().get(metaData.getColumnName(i));
+                        //String column = query.getFieldByNonQualifiedName(metaData.getColumnName(i)).getQualifiedContent();
+                        String column = query.getSelectFields().get(i - 1).getQualifiedContent().toLowerCase();
                         row.add(column, getPostgresValue(resultSet, i, type));
                         typeMap.put(column, type);
                     } else {
-                        String column = query.getDatabase().toString() + "." + metaData.getColumnName(i);
+                        //TODO inconsistency, в mongo при select all префикс не дописывается
+                        //String column = query.getDatabase().toString() + "." + metaData.getColumnName(i);
+                        String column = metaData.getColumnName(i);
                         row.add(column, getPostgresValue(resultSet, i, type));
                         typeMap.put(column, type);
                     }
@@ -79,7 +85,8 @@ public class PostgresMapper {
                 case DOUBLE:
                     return resultSet.getDouble(column);
                 case DATE:
-                    return resultSet.getTimestamp(column).toLocalDateTime();
+                    Timestamp ts = resultSet.getTimestamp(column);
+                    return ts == null ? null : resultSet.getTimestamp(column).toLocalDateTime();
                 case BOOLEAN:
                     return resultSet.getBoolean(column);
                 case STRING:

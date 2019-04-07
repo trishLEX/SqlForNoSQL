@@ -14,6 +14,8 @@ import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
 import ru.bmstu.sqlfornosql.adapters.postgres.PostgresClient;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.Table;
 
@@ -97,8 +99,8 @@ public class Executor {
             Table result = new Table();
             for (Row subSelectRow : subSelectResult.getRows()) {
                 Row row = new Row(result);
-                for (String column : sqlHolder.getSelectItemsStrings()) {
-                    String ident = SqlUtils.getIdentFromSelectItem(column.toLowerCase());
+                for (SelectField column : sqlHolder.getSelectFields()) {
+                    String ident = column.getNonQualifiedContent();
                     row.add(ident, subSelectRow.getObject(ident));
                     result.setType(ident, subSelectResult.getType(ident));
                 }
@@ -126,7 +128,7 @@ public class Executor {
             }
 
             if (!sqlHolder.getGroupBys().isEmpty()) {
-                result = Grouper.group(result, sqlHolder.getGroupBys(), sqlHolder.getSelectItemsStrings(), sqlHolder.getHavingClause());
+                result = Grouper.group(result, sqlHolder.getGroupBys(), sqlHolder.getSelectFields(), sqlHolder.getHavingClause());
             }
 
             if (!sqlHolder.getOrderByElements().isEmpty()) {
@@ -163,15 +165,19 @@ public class Executor {
             Set<String> selectItemsStr = Sets.newHashSet(holder.getSelectIdents());
 
             if (!fromItemListEntry.getKey().equals(sqlHolder.getFromItem())) {
-                holder.addAllAdditionalItemStrings(getAdditionalSelectItemsStrings(fromItemListEntry.getKey(), sqlHolder.getJoins(), selectItemsStr));
+                holder.addAllAdditionalSelectFields(getAdditionalSelectItemsStrings(fromItemListEntry.getKey(), sqlHolder.getJoins(), selectItemsStr));
             }
 
             if (sqlHolder.getWhereClause() != null) {
-                holder.addAllAdditionalItemStrings(getIdentsFromExpression(fromItemListEntry.getKey(), sqlHolder.getWhereClause(), selectItemsStr));
+                holder.addAllAdditionalSelectFields(getIdentsFromExpression(fromItemListEntry.getKey(), sqlHolder.getWhereClause(), selectItemsStr));
             }
 
-            selectItemsStr.addAll(holder.getAdditionalSelectItemsStrings());
-            additionalSelectItems.addAll(holder.getAdditionalSelectItemsStrings());
+            Set<String> holderAdditionalColumns = holder.getAdditionalSelectFields()
+                    .stream()
+                    .map(SelectField::getQualifiedContent)
+                    .collect(Collectors.toSet());
+            selectItemsStr.addAll(holderAdditionalColumns);
+            additionalSelectItems.addAll(holderAdditionalColumns);
 
             if (selectItemsStr.isEmpty()) {
                 resultParts.put(fromItemListEntry.getKey(), new Table());
@@ -242,7 +248,7 @@ public class Executor {
     }
 
     //TODO не поддерживатся USING
-    private List<String> getAdditionalSelectItemsStrings(FromItem from, List<Join> joins, Set<String> existingSelectItems) {
+    private List<Column> getAdditionalSelectItemsStrings(FromItem from, List<Join> joins, Set<String> existingSelectItems) {
         int i = joins.stream().map(Join::getRightItem).collect(Collectors.toList()).indexOf(from);
         if (i < 0) {
             throw new IllegalStateException("From must be found in joins");
@@ -256,10 +262,10 @@ public class Executor {
         return getIdentsFromExpression(from, src.getOnExpression(), existingSelectItems);
     }
 
-    private List<String> getIdentsFromExpression(FromItem fromItem, Expression expression, Set<String> existingSelectItems) {
+    private List<Column> getIdentsFromExpression(FromItem fromItem, Expression expression, Set<String> existingSelectItems) {
         String stringExpr = expression.toString();
         Matcher matcher = IDENT_REGEXP.matcher(stringExpr.replaceAll("'.*'", ""));
-        List<String> idents = new ArrayList<>();
+        List<Column> idents = new ArrayList<>();
         while (matcher.find()) {
             String potentialIdent = matcher.group(1);
             String suffix = potentialIdent.contains(".") ? potentialIdent.substring(0, potentialIdent.lastIndexOf('.')) : potentialIdent;
@@ -267,7 +273,7 @@ public class Executor {
                     && fromItem.toString().endsWith(suffix)
                     && !existingSelectItems.contains(potentialIdent))
             {
-                idents.add(potentialIdent);
+                idents.add(new Column(potentialIdent));
             }
         }
 

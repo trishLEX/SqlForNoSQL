@@ -4,6 +4,7 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoIterable;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
@@ -31,13 +32,20 @@ public class MongoMapper {
                     fillRowFromDocument(element, row, typeMap, query);
                 } else {
                     String field = MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID));
-                    if (query.getSelectFields().contains(field)) {
+                    if (query.getSelectFields().stream()
+                            .map(SelectField::getNonQualifiedContent)
+                            .anyMatch(col -> col.equals(field))
+                    ) {
                         addValueToRow(row, typeMap, query, element, MONGO_ID);
                     }
                 }
 
                 for (String column : element.keySet()) {
-                    if (!column.equals(MONGO_ID) && query.getSelectFields().contains(column)) {
+                    if (!column.equals(MONGO_ID) &&
+                            query.getSelectFields().stream()
+                            .map(SelectField::getNonQualifiedContent)
+                            .anyMatch(col -> col.equals(column))
+                    ) {
                         addValueToRow(row, typeMap, query, element, column);
                     }
                 }
@@ -62,8 +70,9 @@ public class MongoMapper {
 
             for (Map.Entry<String, BsonValue> pair : mongoRow.entrySet()) {
                 if (!query.isSelectAll()) {
-                    addValueToRow(row, typeMap, query.getQualifiedNameMap().get(pair.getKey()), pair.getValue());
+                    addValueToRow(row, typeMap, query.getByNonQualifiedName(pair.getKey()).getQualifiedContent(), pair.getValue());
                 } else {
+                    //TODO может быть можно как-то вывести qualified name
                     addValueToRow(row, typeMap, pair.getKey(), pair.getValue());
                 }
             }
@@ -85,7 +94,7 @@ public class MongoMapper {
                 addValueToRow(
                         row,
                         typeMap,
-                        query.getQualifiedNameMap().get(MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID))),
+                        query.getByNonQualifiedName(MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID))).getQualifiedContent(),
                         element.get(MONGO_ID));
             } else {
                 addValueToRow(row, typeMap, MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID)), element.get(MONGO_ID));
@@ -96,7 +105,7 @@ public class MongoMapper {
     private void addValueToRow(Row row, Map<String, RowType> typeMap, MongoHolder query, BsonDocument document, String column) {
         BsonValue value = document.get(column);
         if (!query.isSelectAll()) {
-            addValueToRow(row, typeMap, query.getQualifiedNameMap().get(column), value);
+            addValueToRow(row, typeMap, query.getByNonQualifiedName(column).getQualifiedContent(), value);
         } else {
             addValueToRow(row, typeMap, column, value);
         }
@@ -104,6 +113,7 @@ public class MongoMapper {
 
     //TODO этот метод должен быть внутри класса Row
     private void addValueToRow(Row row, Map<String, RowType> typeMap, String key, BsonValue value) {
+        key = key.toLowerCase();
         if (value.isBoolean()) {
             row.add(key, value.asBoolean().getValue());
             typeMap.put(key, RowType.BOOLEAN);
