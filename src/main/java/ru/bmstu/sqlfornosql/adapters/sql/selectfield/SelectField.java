@@ -17,6 +17,11 @@ public abstract class SelectField {
 
     public void setSource(FromItem source) {
         this.source = source;
+        updateQualifiedName();
+    }
+
+    protected void updateQualifiedName() {
+        //do nothing
     }
 
     public FromItem getSource() {

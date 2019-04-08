@@ -60,6 +60,11 @@ public class SelectFieldExpression extends SelectField {
     }
 
     @Override
+    protected void updateQualifiedName() {
+        column.setSource(getSource());
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;

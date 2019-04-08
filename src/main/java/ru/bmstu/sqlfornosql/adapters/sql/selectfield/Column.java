@@ -1,5 +1,7 @@
 package ru.bmstu.sqlfornosql.adapters.sql.selectfield;
 
+import net.sf.jsqlparser.statement.select.SubSelect;
+
 public class Column extends SelectField {
     private String qualifiedName;
     private String nonQualifiedName;
@@ -15,6 +17,24 @@ public class Column extends SelectField {
     public Column(String qualifiedName, String alias) {
         this(qualifiedName);
         this.alias = alias;
+    }
+
+    @Override
+    protected void updateQualifiedName() {
+        if (getSource() instanceof SubSelect) {
+            //TODO проверить обязателен ли subselect'у alias
+            if (getSource().getAlias() == null){
+                throw new IllegalStateException("SubSelects must have alias");
+            } else {
+                qualifiedName = getSource().getAlias().getName() + "." + nonQualifiedName;
+            }
+        } else {
+            if (getSource().getAlias() == null) {
+                qualifiedName = getSource().toString() + "." + nonQualifiedName;
+            } else {
+                qualifiedName = getSource().getAlias().getName() + "." + nonQualifiedName;
+            }
+        }
     }
 
     @Override
