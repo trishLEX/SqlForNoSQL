@@ -15,7 +15,7 @@ public class AllColumns extends SelectField {
 
     @Override
     public String getNonQualifiedContent() {
-        return ALL_COLUMNS_STR;
+        return getQualifiedContent();
     }
 
     @Override
@@ -25,12 +25,12 @@ public class AllColumns extends SelectField {
 
     @Override
     public String getQualifiedIdent() {
-        return ALL_COLUMNS_STR;
+        return getQualifiedContent();
     }
 
     @Override
     public String getNonQualifiedIdent() {
-        return ALL_COLUMNS_STR;
+        return getQualifiedContent();
     }
 
     @Override

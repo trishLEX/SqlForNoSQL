@@ -29,12 +29,12 @@ public class Column extends SelectField {
 
     @Override
     public String getQualifiedIdent() {
-        return qualifiedName;
+        return getQualifiedContent();
     }
 
     @Override
     public String getNonQualifiedIdent() {
-        return nonQualifiedName;
+        return getNonQualifiedContent();
     }
 
     public String getAlias() {
