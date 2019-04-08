@@ -1,11 +1,12 @@
 package ru.bmstu.sqlfornosql.adapters.sql.selectfield;
 
-public class SelectFieldExpression implements SelectField {
+public class SelectFieldExpression extends SelectField {
     private Column column;
     private SqlFunction function;
     private String alias;
 
     public SelectFieldExpression(SqlFunction function, String qualifiedName) {
+        super(function.name().toLowerCase() + "(" + qualifiedName.toLowerCase() + ")");
         this.column = new Column(qualifiedName);
         this.function = function;
     }

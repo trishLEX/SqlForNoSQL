@@ -1,12 +1,13 @@
 package ru.bmstu.sqlfornosql.adapters.sql.selectfield;
 
-public class Column implements SelectField {
+public class Column extends SelectField {
     private String qualifiedName;
     private String nonQualifiedName;
 
     private String alias;
 
     public Column(String qualifiedName) {
+        super(qualifiedName);
         this.qualifiedName = qualifiedName;
         this.nonQualifiedName = makeNonQualifiedName(qualifiedName);
     }

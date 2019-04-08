@@ -100,36 +100,98 @@ public class SqlUtils {
         return getStringValue(expression, false);
     }
 
-    public static SelectField getSelectFieldFromString(String field) {
-        if (field.equals("*")) {
+    public static SelectField getSelectFieldFromString(SelectItem field) {
+        String fieldStr = field.toString();
+        if (fieldStr.equals("*")) {
             return ru.bmstu.sqlfornosql.adapters.sql.selectfield.AllColumns.ALL_COLUMNS;
-        } else if (field.startsWith("sum(")) {
-            return new SelectFieldExpression(
-                    SqlFunction.SUM,
-                    field.substring(4, field.length() - 1)
-            );
-        } else if (field.startsWith("avg(")) {
-            return new SelectFieldExpression(
-                    SqlFunction.AVG,
-                    field.substring(4, field.length() - 1)
-            );
-        } else if (field.startsWith("min(")) {
-            return new SelectFieldExpression(
-                    SqlFunction.MIN,
-                    field.substring(4, field.length() - 1)
-            );
-        } else if (field.startsWith("max(")) {
-            return new SelectFieldExpression(
-                    SqlFunction.MAX,
-                    field.substring(4, field.length() - 1)
-            );
-        } else if (field.startsWith("count(")) {
+        } else if (fieldStr.startsWith("sum(")) {
+            return getSumExpression((SelectExpressionItem) field, fieldStr);
+        } else if (fieldStr.startsWith("avg(")) {
+            return getAvgExpression((SelectExpressionItem) field, fieldStr);
+        } else if (fieldStr.startsWith("min(")) {
+            return getMinExpression((SelectExpressionItem) field, fieldStr);
+        } else if (fieldStr.startsWith("max(")) {
+            return getMaxExpression((SelectExpressionItem) field, fieldStr);
+        } else if (fieldStr.startsWith("count(")) {
+            return getCountExpression((SelectExpressionItem) field, fieldStr);
+        } else {
+            SelectExpressionItem item = (SelectExpressionItem) field;
+            return new ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column(fieldStr, item.getAlias().getName());
+        }
+    }
+
+    private static SelectField getCountExpression(SelectExpressionItem item, String fieldStr) {
+        if (item.getAlias() != null) {
             return new SelectFieldExpression(
                     SqlFunction.COUNT,
-                    field.substring(6, field.length() - 1)
+                    fieldStr.substring(6, fieldStr.length() - 1),
+                    item.getAlias().getName()
             );
         } else {
-            return new ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column(field);
+            return new SelectFieldExpression(
+                    SqlFunction.COUNT,
+                    fieldStr.substring(6, fieldStr.length() - 1)
+            );
+        }
+    }
+
+    private static SelectField getMaxExpression(SelectExpressionItem item, String fieldStr) {
+        if (item.getAlias() != null) {
+            return new SelectFieldExpression(
+                    SqlFunction.MAX,
+                    fieldStr.substring(4, fieldStr.length() - 1),
+                    item.getAlias().getName()
+            );
+        } else {
+            return new SelectFieldExpression(
+                    SqlFunction.MAX,
+                    fieldStr.substring(4, fieldStr.length() - 1)
+            );
+        }
+    }
+
+    private static SelectField getMinExpression(SelectExpressionItem item, String fieldStr) {
+        if (item.getAlias() != null) {
+            return new SelectFieldExpression(
+                    SqlFunction.MIN,
+                    fieldStr.substring(4, fieldStr.length() - 1),
+                    item.getAlias().getName()
+            );
+        } else {
+            return new SelectFieldExpression(
+                    SqlFunction.MIN,
+                    fieldStr.substring(4, fieldStr.length() - 1)
+            );
+        }
+    }
+
+    private static SelectField getAvgExpression(SelectExpressionItem item, String fieldStr) {
+        if (item.getAlias() != null) {
+            return new SelectFieldExpression(
+                    SqlFunction.AVG,
+                    fieldStr.substring(4, fieldStr.length() - 1),
+                    item.getAlias().getName()
+            );
+        } else {
+            return new SelectFieldExpression(
+                    SqlFunction.AVG,
+                    fieldStr.substring(4, fieldStr.length() - 1)
+            );
+        }
+    }
+
+    private static SelectField getSumExpression(SelectExpressionItem item, String fieldStr) {
+        if (item.getAlias() != null) {
+            return new SelectFieldExpression(
+                    SqlFunction.SUM,
+                    fieldStr.substring(4, fieldStr.length() - 1),
+                    item.getAlias().getName()
+            );
+        } else {
+            return new SelectFieldExpression(
+                    SqlFunction.SUM,
+                    fieldStr.substring(4, fieldStr.length() - 1)
+            );
         }
     }
 

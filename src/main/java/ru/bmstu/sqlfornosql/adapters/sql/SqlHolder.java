@@ -120,7 +120,7 @@ public class SqlHolder {
 
         private List<SelectField> getSelectFieldsFromSelectItems(List<SelectItem> selectItems) {
             return selectItems.stream()
-                    .map(item -> SqlUtils.getSelectFieldFromString(item.toString()))
+                    .map(SqlUtils::getSelectFieldFromString)
                     .collect(Collectors.toList());
         }
 
@@ -159,10 +159,6 @@ public class SqlHolder {
                 holder.orderByElements = orderByElements;
             }
             return this;
-        }
-
-        private boolean hasColumnAggregationFunction(String col) {
-            return col.matches("sum\\(.*\\)|avg\\(.*\\)|min\\(.*\\)|max\\(.*\\)|count\\(.*\\)");
         }
 
         public SqlHolder build() {

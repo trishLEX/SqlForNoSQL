@@ -1,11 +1,11 @@
 package ru.bmstu.sqlfornosql.adapters.sql.selectfield;
 
-public class AllColumns implements SelectField {
+public class AllColumns extends SelectField {
     public static final AllColumns ALL_COLUMNS = new AllColumns();
     private static final String ALL_COLUMNS_STR = "*";
 
     private AllColumns() {
-        //singleton
+        super(ALL_COLUMNS_STR);
     }
 
     @Override
