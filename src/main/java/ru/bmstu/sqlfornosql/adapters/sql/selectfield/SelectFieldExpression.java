@@ -1,5 +1,7 @@
 package ru.bmstu.sqlfornosql.adapters.sql.selectfield;
 
+import java.util.Objects;
+
 public class SelectFieldExpression extends SelectField {
     private Column column;
     private SqlFunction function;
@@ -55,5 +57,24 @@ public class SelectFieldExpression extends SelectField {
     @Override
     public String toString() {
         return function.name().toLowerCase() + "(" + column.getQualifiedContent() + ")";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || this.getClass() != o.getClass()) {
+            return false;
+        }
+
+        SelectFieldExpression other = (SelectFieldExpression) o;
+        return this.function.equals(other.function) && this.column.equals(other.column);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(function, column);
     }
 }

@@ -60,4 +60,23 @@ public class Column extends SelectField {
             throw new IllegalStateException("Name must be qualified");
         }
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || this.getClass() != o.getClass()) {
+            return false;
+        }
+
+        Column other = (Column) o;
+        return this.nonQualifiedName.equalsIgnoreCase(other.nonQualifiedName);
+    }
+
+    @Override
+    public int hashCode() {
+        return nonQualifiedName.toLowerCase().hashCode();
+    }
 }

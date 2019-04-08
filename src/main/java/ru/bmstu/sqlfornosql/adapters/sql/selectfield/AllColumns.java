@@ -32,4 +32,14 @@ public class AllColumns extends SelectField {
     public String getNonQualifiedIdent() {
         return ALL_COLUMNS_STR;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        return this == o;
+    }
+
+    @Override
+    public int hashCode() {
+        return ALL_COLUMNS_STR.hashCode();
+    }
 }

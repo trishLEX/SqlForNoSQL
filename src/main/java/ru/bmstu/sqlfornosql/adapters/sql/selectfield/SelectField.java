@@ -26,4 +26,8 @@ public abstract class SelectField {
     public String getColumnName() {
         return columnName;
     }
+
+    public abstract boolean equals(Object o);
+
+    public abstract int hashCode();
 }
