@@ -1,14 +1,16 @@
 package ru.bmstu.sqlfornosql.model;
 
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
+
 import java.time.LocalDateTime;
 import java.util.*;
 
 import static ru.bmstu.sqlfornosql.model.RowType.NULL;
 
 public class Table {
-    private Map<String, RowType> typeMap;
+    private Map<SelectField, RowType> typeMap;
     private List<Row> rows;
-    private Set<String> columns;
+    private Set<SelectField> columns;
 
     public Table() {
         typeMap = new LinkedHashMap<>();
@@ -16,7 +18,7 @@ public class Table {
         columns = new LinkedHashSet<>();
     }
 
-    public Table add(String key, Object value, RowType type) {
+    public Table add(SelectField key, Object value, RowType type) {
         columns.add(key);
         typeMap.put(key, type);
         rows.add(new Row(this).add(key, value));
@@ -30,16 +32,16 @@ public class Table {
         return this;
     }
 
-    public void setType(String column, RowType type) {
+    public void setType(SelectField column, RowType type) {
         if (type != NULL || typeMap.get(column) == NULL || typeMap.get(column) == null) {
             typeMap.put(column, type);
         }
     }
 
-    public Table add(Row row, Map<String, RowType> types) {
+    public Table add(Row row, Map<SelectField, RowType> types) {
         add(row);
 
-        for (Map.Entry<String, RowType> typeEntry : types.entrySet()) {
+        for (Map.Entry<SelectField, RowType> typeEntry : types.entrySet()) {
             setType(typeEntry.getKey(), typeEntry.getValue());
         }
 
@@ -50,7 +52,7 @@ public class Table {
         return rows;
     }
 
-    public Set<String> getColumns() {
+    public Set<SelectField> getColumns() {
         return columns;
     }
 
@@ -64,13 +66,13 @@ public class Table {
         return true;
     }
 
-    public void remove(Collection<String> keys) {
-        for (String key : keys) {
+    public void remove(Collection<SelectField> keys) {
+        for (SelectField key : keys) {
             boolean removed = columns.remove(key);
             typeMap.remove(key);
             if (!removed) {
-                columns.remove(key.toLowerCase());
-                typeMap.remove(key.toLowerCase());
+                columns.remove(key);
+                typeMap.remove(key);
             }
         }
         for (Row row : rows) {
@@ -78,7 +80,7 @@ public class Table {
         }
     }
 
-    public RowType getType(String key) {
+    public RowType getType(SelectField key) {
         if (typeMap.containsKey(key)) {
             return typeMap.get(key);
         } else {
@@ -86,13 +88,13 @@ public class Table {
         }
     }
 
-    public Map<String, RowType> getTypeMap() {
+    public Map<SelectField, RowType> getTypeMap() {
         return typeMap;
     }
 
-    public void sort(LinkedHashMap<String, Boolean> orderByMap) {
+    public void sort(LinkedHashMap<SelectField, Boolean> orderByMap) {
         rows.sort((o1, o2) -> {
-            for (Map.Entry<String, Boolean> orderEntry : orderByMap.entrySet()) {
+            for (Map.Entry<SelectField, Boolean> orderEntry : orderByMap.entrySet()) {
                 int compare = compareValues(o1.getObject(orderEntry.getKey()), o2.getObject(orderEntry.getKey()), getType(orderEntry.getKey()));
                 if (compare != 0) {
                     return orderEntry.getValue() ? compare : -compare;

@@ -13,6 +13,7 @@ import ru.bmstu.sqlfornosql.model.DatabaseName;
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static ru.bmstu.sqlfornosql.adapters.sql.selectfield.AllColumns.ALL_COLUMNS;
@@ -42,6 +43,7 @@ public class SqlHolder {
     private Map<FromItem, List<SelectItem>> selectItemMap;
     private List<SelectField> selectFields;
     private List<SelectField> additionalSelectFields;
+    private Map<String, SelectField> columnNameToSelectField;
 
     private DatabaseName database;
 
@@ -59,6 +61,7 @@ public class SqlHolder {
         selectItemMap = new LinkedHashMap<>();
         selectFields = new ArrayList<>();
         additionalSelectFields = new ArrayList<>();
+        columnNameToSelectField = new HashMap<>();
     }
 
     public static class SqlHolderBuilder {
@@ -112,6 +115,10 @@ public class SqlHolder {
             if (selectItems != null) {
                 holder.selectItems = selectItems;
                 holder.selectFields = getSelectFieldsFromSelectItems(selectItems);
+                holder.columnNameToSelectField = holder.selectFields.stream().collect(Collectors.toMap(
+                        SelectField::getNonQualifiedName,
+                        Function.identity()
+                ));
 
                 holder.isSelectAll = holder.selectFields.contains(ALL_COLUMNS);
             }
@@ -391,6 +398,18 @@ public class SqlHolder {
 
     public Map<FromItem, List<SelectItem>> getSelectItemMap() {
         return selectItemMap;
+    }
+
+    public Map<String, SelectField> getColumnNameToSelectField() {
+        return columnNameToSelectField;
+    }
+
+    public SelectField getSelectFieldByColumnName(String columnName) {
+        if (columnNameToSelectField.containsKey(columnName)) {
+            return columnNameToSelectField.get(columnName);
+        } else {
+            throw new NoSuchElementException("Column '" + columnName + "' not in select list");
+        }
     }
 
     public SelectField getFieldByNonQualifiedName(String name) {

@@ -23,7 +23,7 @@ public class MongoMapper {
         for (BsonDocument element : mongoResult) {
             System.out.println(element);
             Row row = new Row(table);
-            Map<String, RowType> typeMap = new LinkedHashMap<>();
+            Map<SelectField, RowType> typeMap = new LinkedHashMap<>();
 
             if (!query.hasAggregateFunctions()) {
                 fillRowFromDocument(element, row, typeMap, query);

@@ -7,9 +7,9 @@ public class SelectFieldExpression extends SelectField {
     private SqlFunction function;
     private String alias;
 
-    public SelectFieldExpression(SqlFunction function, String qualifiedName) {
-        super(function.name().toLowerCase() + "(" + qualifiedName.toLowerCase() + ")");
-        this.column = new Column(qualifiedName);
+    public SelectFieldExpression(SqlFunction function, String userInput) {
+        super(function.name().toLowerCase() + "(" + userInput + ")");
+        this.column = new Column(userInput);
         this.function = function;
     }
 

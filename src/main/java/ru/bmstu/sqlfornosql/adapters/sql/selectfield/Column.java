@@ -1,45 +1,20 @@
 package ru.bmstu.sqlfornosql.adapters.sql.selectfield;
 
-import net.sf.jsqlparser.statement.select.SubSelect;
-
 public class Column extends SelectField {
-    private String qualifiedName;
-    private String nonQualifiedName;
-
     private String alias;
 
-    public Column(String qualifiedName) {
-        super(qualifiedName);
-        this.qualifiedName = qualifiedName;
-        this.nonQualifiedName = makeNonQualifiedName(qualifiedName);
+    public Column(String userInput) {
+        super(userInput);
     }
 
-    public Column(String qualifiedName, String alias) {
-        this(qualifiedName);
+    public Column(String userInput, String alias) {
+        this(userInput);
         this.alias = alias;
     }
 
     @Override
-    protected void updateQualifiedName() {
-        if (getSource() instanceof SubSelect) {
-            //TODO проверить обязателен ли subselect'у alias
-            if (getSource().getAlias() == null){
-                throw new IllegalStateException("SubSelects must have alias");
-            } else {
-                qualifiedName = getSource().getAlias().getName() + "." + nonQualifiedName;
-            }
-        } else {
-            if (getSource().getAlias() == null) {
-                qualifiedName = getSource().toString() + "." + nonQualifiedName;
-            } else {
-                qualifiedName = getSource().getAlias().getName() + "." + nonQualifiedName;
-            }
-        }
-    }
-
-    @Override
     public String getQualifiedContent() {
-        return qualifiedName;
+        return fullQualifiedName;
     }
 
     @Override
@@ -67,7 +42,7 @@ public class Column extends SelectField {
 
     @Override
     public String toString() {
-        return qualifiedName;
+        return fullQualifiedName;
     }
 
     //TODO аналогичный метод в MongoUtils (дупликация кода)

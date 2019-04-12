@@ -9,6 +9,7 @@ import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
@@ -26,6 +27,7 @@ public class MongoHolder {
     private boolean selectAll;
     private List<String> groupBys;
     private List<SelectField> selectFields;
+    private Map<String, SelectField> columnNameToSelectField;
     private boolean hasAggregateFunctions;
     private long limit;
     private long offset;
@@ -56,6 +58,7 @@ public class MongoHolder {
         mongoHolder.countAll = sqlHolder.isCountAll();
 
         mongoHolder.selectFields = sqlHolder.getSelectFields();
+        mongoHolder.columnNameToSelectField = sqlHolder.getColumnNameToSelectField();
 
         if (sqlHolder.isDistinct()) {
                 mongoHolder.groupBys = StreamEx.of(sqlHolder.getSelectFields())
