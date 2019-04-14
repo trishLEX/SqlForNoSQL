@@ -3,6 +3,7 @@ package ru.bmstu.sqlfornosql.executor;
 import net.sf.jsqlparser.expression.Expression;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Row;
 
 import java.util.HashMap;
@@ -36,11 +37,11 @@ public class ExecutorUtils {
         return sqljep;
     }
 
-    public static Comparable getValue(Row row, String key) {
+    public static Comparable getValue(Row row, SelectField key) {
         return (Comparable) row.getObject(key);
     }
 
-    public static Comparable getValueKeyIgnoreCase(Row row, String key) {
-        return (Comparable) row.getObject(key.toLowerCase());
+    public static Comparable getValue(Row row, String key) {
+        return (Comparable) row.getObject(key);
     }
 }

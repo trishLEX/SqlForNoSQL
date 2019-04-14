@@ -4,6 +4,8 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.statement.select.Join;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.Table;
 
@@ -18,16 +20,16 @@ import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.prepareSqlJEP;
 
 @ParametersAreNonnullByDefault
 public class Joiner {
-    public static Table join(Table from, List<Table> joinTables, List<Join> joins, @Nullable Expression where) {
+    public static Table join(SqlHolder holder, Table from, List<Table> joinTables, List<Join> joins, @Nullable Expression where) {
         Table leftTable = from;
         for (int i = 0; i < joins.size(); i++) {
             Table rightTable = joinTables.get(i);
             Join join = joins.get(i);
 
             if (join.getOnExpression() != null) {
-                leftTable = join(leftTable, rightTable, join.getOnExpression(), where);
+                leftTable = join(holder, leftTable, rightTable, join.getOnExpression(), where);
             } else {
-                leftTable = join(leftTable, rightTable, where);
+                leftTable = join(holder, leftTable, rightTable, where);
             }
         }
 
@@ -35,7 +37,7 @@ public class Joiner {
     }
 
     //TODO join работает сейчас только по полям, которые есть в selectItems!!!
-    private static Table join(Table leftTable, Table rightTable, Expression onExpression, @Nullable Expression where) {
+    private static Table join(SqlHolder holder, Table leftTable, Table rightTable, Expression onExpression, @Nullable Expression where) {
         Table result = new Table();
         HashMap<String, Integer> colMapping = getIdentMapping(onExpression.toString());
         RowJEP sqljep = prepareSqlJEP(onExpression, colMapping);
@@ -45,13 +47,13 @@ public class Joiner {
                 Comparable[] row = new Comparable[colMapping.size()];
 
                 for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
-                    row[colMappingEntry.getValue()] = getValue(leftRow, rightRow, colMappingEntry.getKey());
+                    row[colMappingEntry.getValue()] = getValue(leftRow, rightRow, holder.getByUserInput(colMappingEntry.getKey()));
                 }
 
                 try {
                     Boolean expressionValue = (Boolean) sqljep.getValue(row);
                     if (expressionValue) {
-                        addRow(result, joinRows(result, leftRow, rightRow, leftTable, rightTable), where);
+                        addRow(holder, result, joinRows(result, leftRow, rightRow, leftTable, rightTable), where);
                     }
                 } catch (ParseException e) {
                     throw new IllegalStateException("Can't execute expression: " + onExpression, e);
@@ -62,12 +64,12 @@ public class Joiner {
         return result;
     }
 
-    private static Table join(Table leftTable, Table rightTable, @Nullable Expression where) {
+    private static Table join(SqlHolder holder, Table leftTable, Table rightTable, @Nullable Expression where) {
         Table result = new Table();
 
         for (Row leftRow : leftTable.getRows()) {
             for (Row rightRow : rightTable.getRows()) {
-                addRow(result, joinRows(result, leftRow, rightRow, leftTable, rightTable), where);
+                addRow(holder, result, joinRows(result, leftRow, rightRow, leftTable, rightTable), where);
             }
         }
 
@@ -76,12 +78,12 @@ public class Joiner {
 
     private static Row joinRows(Table table, Row left, Row right, Table leftTable, Table rightTable) {
         Row result = new Row(table);
-        for (String leftColumn : left.getColumns()) {
+        for (SelectField leftColumn : left.getColumns()) {
             result.add(leftColumn, left.getObject(leftColumn));
             table.setType(leftColumn, leftTable.getType(leftColumn));
         }
 
-        for (String rightColumn : right.getColumns()) {
+        for (SelectField rightColumn : right.getColumns()) {
             result.add(rightColumn, right.getObject(rightColumn));
             table.setType(rightColumn, rightTable.getType(rightColumn));
         }
@@ -89,7 +91,7 @@ public class Joiner {
         return result;
     }
 
-    private static Comparable getValue(Row left, Row right, String key) {
+    private static Comparable getValue(Row left, Row right, SelectField key) {
         if (!left.contains(key) ^ right.contains(key)) {
             throw new IllegalStateException("Column " + key + " is clashed");
         }
@@ -101,11 +103,12 @@ public class Joiner {
         }
     }
 
-    private static Comparable getValue(Row row, String key) {
+    private static Comparable getValue(Row row, SelectField key) {
         return (Comparable) row.getObject(key);
     }
 
-    private static void addRow(Table table, Row row, @Nullable Expression where) {
+    //TODO holder сделать полем Joiner (когда бин будет)
+    private static void addRow(SqlHolder holder, Table table, Row row, @Nullable Expression where) {
         if (where == null) {
             table.add(row);
         } else {
@@ -115,7 +118,7 @@ public class Joiner {
             Comparable[] values = new Comparable[colMapping.size()];
 
             for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
-                values[colMappingEntry.getValue()] = getValue(row, colMappingEntry.getKey());
+                values[colMappingEntry.getValue()] = getValue(row, holder.getByUserInput(colMappingEntry.getKey()));
             }
 
             try {

@@ -41,7 +41,7 @@ public class ExecutorTest {
         System.out.println(table);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = IllegalStateException.class)
     public void selectSeveralFromItemsException() {
         String query = "SELECT test.a, test.b FROM mongodb.test.test, postgres.postgres.test.test";
         Table table = executor.execute(query);
@@ -82,26 +82,24 @@ public class ExecutorTest {
     }
 
     @Test
-    //TODO !!!
     public void simpleSubSelect() {
-        String query = "SELECT postgres.postgres.test.test.intField FROM (SELECT * FROM postgres.postgres.test.test) WHERE postgres.postgres.test.test.intField = 123";
+        String query = "SELECT t.intField FROM (SELECT * FROM postgres.postgres.test.test) AS t WHERE t.intField = 123";
         Table table = executor.execute(query);
         System.out.println(table);
     }
 
     @Test
     public void groupBySubSelect() {
-        String query = "SELECT sum(postgres.postgres.test.test.intField) FROM" +
-                " (SELECT * FROM postgres.postgres.test.test) GROUP BY postgres.postgres.test.test.intField";
+        String query = "SELECT sum(t.intField) FROM (SELECT * FROM postgres.postgres.test.test) as t GROUP BY t.intField";
         Table table = executor.execute(query);
         System.out.println(table);
     }
 
     @Test
     public void groupBySubSelectWithWhere() {
-        String query = "SELECT sum(postgres.postgres.test.test.intField) FROM" +
-                " (SELECT * FROM postgres.postgres.test.test) WHERE postgres.postgres.test.test.intField = 123 " +
-                "GROUP BY postgres.postgres.test.test.intField";
+        String query = "SELECT sum(t.intField) FROM " +
+                "(SELECT * FROM postgres.postgres.test.test) as t WHERE t.intField = 123 " +
+                "GROUP BY t.intField";
 
         Table table = executor.execute(query);
         System.out.println(table);
@@ -109,8 +107,8 @@ public class ExecutorTest {
 
     @Test
     public void joinWithSubSelect() {
-        String query = "SELECT postgres.postgres.test.test.intField, mongodb.test.test.dateField FROM (SELECT * FROM postgres.postgres.test.test) " +
-                "JOIN mongodb.test.test ON postgres.postgres.test.test.intField = mongodb.test.test.intField";
+        String query = "SELECT t.intField, mongodb.test.test.dateField FROM (SELECT * FROM postgres.postgres.test.test) as t " +
+                "JOIN mongodb.test.test ON t.intField = mongodb.test.test.intField";
         Table table = executor.execute(query);
         System.out.println(table);
     }

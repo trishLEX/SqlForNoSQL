@@ -11,11 +11,13 @@ import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoAdapter;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
+import ru.bmstu.sqlfornosql.adapters.mongo.MongoUtils;
 import ru.bmstu.sqlfornosql.adapters.postgres.PostgresClient;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.Table;
 
@@ -62,6 +64,7 @@ public class Executor {
      */
     //TODO здесь fromItem может быть подзапросом - это нужно обработать
     private Table simpleSelect(SqlHolder sqlHolder) {
+        sqlHolder.fillColumnMap();
         if (sqlHolder.getFromItem() instanceof net.sf.jsqlparser.schema.Table) {
             switch (sqlHolder.getDatabase().getDbType()) {
                 case POSTGRES:
@@ -82,13 +85,16 @@ public class Executor {
             }
         } else if (sqlHolder.getFromItem() instanceof SubSelect) {
             SubSelect subSelect = ((SubSelect) sqlHolder.getFromItem());
-            String subSelectStr = subSelect.toString();
             Table subSelectResult;
+            ((PlainSelect)subSelect.getSelectBody()).getFromItem().setAlias(subSelect.getAlias());
+            String subSelectStr = subSelect.toString();
             if (subSelect.isUseBrackets()) {
-                subSelectResult = execute(subSelectStr.substring(1, subSelectStr.length() - 1));
+                subSelectResult = execute(subSelectStr.substring(1, subSelectStr.lastIndexOf(')')));
             } else {
                 subSelectResult = execute(subSelectStr);
             }
+
+            //subSelectResult.getColumns().forEach(column -> column.setFromItemAlias(subSelect.getAlias()));
 
 //            for (String col : sqlHolder.getSelectItemsStrings()) {
 //                if (col.startsWith("avg(")) {
@@ -100,9 +106,14 @@ public class Executor {
             for (Row subSelectRow : subSelectResult.getRows()) {
                 Row row = new Row(result);
                 for (SelectField column : sqlHolder.getSelectFields()) {
-                    String ident = column.getNonQualifiedContent();
-                    row.add(ident, subSelectRow.getObject(ident));
-                    result.setType(ident, subSelectResult.getType(ident));
+                    if (column instanceof SelectFieldExpression) {
+                        Column ident = ((SelectFieldExpression) column).getColumn();
+                        row.add(ident, subSelectRow.getObject(ident));
+                        result.setType(column, subSelectResult.getType(ident));
+                    } else {
+                        row.add(column, subSelectRow.getObject(column));
+                        result.setType(column, subSelectResult.getType(column));
+                    }
                 }
 
                 if (sqlHolder.getWhereClause() != null) {
@@ -111,7 +122,7 @@ public class Executor {
                     Comparable[] values = new Comparable[colMapping.size()];
 
                     for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
-                        values[colMappingEntry.getValue()] = getValueKeyIgnoreCase(row, colMappingEntry.getKey());
+                        values[colMappingEntry.getValue()] = getValue(row, colMappingEntry.getKey());
                     }
 
                     try {
@@ -128,14 +139,18 @@ public class Executor {
             }
 
             if (!sqlHolder.getGroupBys().isEmpty()) {
-                result = Grouper.group(result, sqlHolder.getGroupBys(), sqlHolder.getSelectFields(), sqlHolder.getHavingClause());
+                result = Grouper.group(sqlHolder, result, sqlHolder.getGroupBys(), sqlHolder.getSelectFields(), sqlHolder.getHavingClause());
             }
 
             if (!sqlHolder.getOrderByElements().isEmpty()) {
-                LinkedHashMap<String, Boolean> orderByMap = new LinkedHashMap<>();
+                LinkedHashMap<SelectField, Boolean> orderByMap = new LinkedHashMap<>();
                 for (OrderByElement element : sqlHolder.getOrderByElements()) {
                     //TODO order by можно выполянть по expression'у
-                    orderByMap.put(element.toString(), element.isAsc());
+                    orderByMap.put(
+                            sqlHolder.getFieldByNonQualifiedName(
+                                    MongoUtils.getNonQualifiedName(element.toString())
+                            ),
+                            element.isAsc());
                 }
                 result.sort(orderByMap);
             }
@@ -151,33 +166,29 @@ public class Executor {
      * @param sqlHolder - холдер, содержащий запрос
      * @return таблицу с результато выполнения запроса
      */
+    //TODO нужно отрефакторить
     private Table selectWithJoins(SqlHolder sqlHolder) {
         Map<FromItem, Table> resultParts = new LinkedHashMap<>();
         List<String> queries = new ArrayList<>();
 
-        Set<String> additionalSelectItems = new HashSet<>();
+        Set<SelectField> additionalSelectItems = new HashSet<>();
         for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : sqlHolder.getSelectItemMap().entrySet()) {
             SqlHolder holder = new SqlHolder.SqlHolderBuilder()
                     .withSelectItems(fromItemListEntry.getValue())
                     .withFromItem(fromItemListEntry.getKey())
                     .build();
 
-            Set<String> selectItemsStr = Sets.newHashSet(holder.getSelectIdents());
+            Set<SelectField> selectItemsStr = Sets.newHashSet(holder.getSelectFields());
 
-            if (!fromItemListEntry.getKey().equals(sqlHolder.getFromItem())) {
-                holder.addAllAdditionalSelectFields(getAdditionalSelectItemsStrings(fromItemListEntry.getKey(), sqlHolder.getJoins(), selectItemsStr));
-            }
+            holder.addAllAdditionalSelectFields(getAdditionalSelectItemsStrings(fromItemListEntry.getKey(), sqlHolder.getJoins(), selectItemsStr));
 
             if (sqlHolder.getWhereClause() != null) {
                 holder.addAllAdditionalSelectFields(getIdentsFromExpression(fromItemListEntry.getKey(), sqlHolder.getWhereClause(), selectItemsStr));
             }
 
-            Set<String> holderAdditionalColumns = holder.getAdditionalSelectFields()
-                    .stream()
-                    .map(SelectField::getQualifiedContent)
-                    .collect(Collectors.toSet());
-            selectItemsStr.addAll(holderAdditionalColumns);
+            Set<SelectField> holderAdditionalColumns = Sets.newHashSet(holder.getAdditionalSelectFields());
             additionalSelectItems.addAll(holderAdditionalColumns);
+            selectItemsStr.addAll(holderAdditionalColumns);
 
             if (selectItemsStr.isEmpty()) {
                 resultParts.put(fromItemListEntry.getKey(), new Table());
@@ -197,15 +208,15 @@ public class Executor {
             }
 
             if (!sqlHolder.getGroupBys().isEmpty()) {
-                List<String> groupBys = new ArrayList<>();
-                for (String groupByItem : sqlHolder.getGroupBys()) {
+                List<SelectField> groupBys = new ArrayList<>();
+                for (SelectField groupByItem : sqlHolder.getGroupBys()) {
                     if (selectItemsStr.contains(groupByItem)) {
                         groupBys.add(groupByItem);
                     }
                 }
 
                 if (!groupBys.isEmpty()) {
-                    query += " GROUP BY " + String.join(" ,", groupBys);
+                    query += " GROUP BY " + groupBys.stream().map(SelectField::getQualifiedContent).collect(Collectors.joining(" ,"));
                 }
 
                 if (sqlHolder.getHavingClause() != null) {
@@ -242,45 +253,48 @@ public class Executor {
             throw new IllegalStateException("FromItem can not be null");
         }
 
-        Table result = Joiner.join(from, Lists.newArrayList(resultParts.values()), sqlHolder.getJoins(), sqlHolder.getWhereClause());
-        result.remove(additionalSelectItems);
+        sqlHolder.addAllAdditionalSelectFields(additionalSelectItems);
+        //TODO можно оптимизировать: не нужно дополнительный раз вставлять whereClause
+        Table result = Joiner.join(sqlHolder, from, Lists.newArrayList(resultParts.values()), sqlHolder.getJoins(), sqlHolder.getWhereClause());
+        result.remove(Sets.difference(additionalSelectItems, Sets.newHashSet(sqlHolder.getSelectFields())));
         return result;
     }
 
     //TODO не поддерживатся USING
-    private List<Column> getAdditionalSelectItemsStrings(FromItem from, List<Join> joins, Set<String> existingSelectItems) {
-        int i = joins.stream().map(Join::getRightItem).collect(Collectors.toList()).indexOf(from);
-        if (i < 0) {
-            throw new IllegalStateException("From must be found in joins");
+    private List<SelectField> getAdditionalSelectItemsStrings(FromItem from, List<Join> joins, Set<SelectField> existingSelectItems) {
+        List<SelectField> selectFields = new ArrayList<>();
+        for (Join join : joins) {
+            if (join.getOnExpression() != null) {
+                selectFields.addAll(getIdentsFromExpression(from, join.getOnExpression(), existingSelectItems));
+            }
         }
 
-        Join src = joins.get(i);
-        if (src.getOnExpression() == null) {
-            return Collections.emptyList();
-        }
-
-        return getIdentsFromExpression(from, src.getOnExpression(), existingSelectItems);
+        return selectFields;
     }
 
-    private List<Column> getIdentsFromExpression(FromItem fromItem, Expression expression, Set<String> existingSelectItems) {
+    private List<SelectField> getIdentsFromExpression(FromItem fromItem, Expression expression, Set<SelectField> existingSelectItems) {
+        Set<String> existingSelectItemsStr = existingSelectItems.stream().map(SelectField::getNonQualifiedIdent).collect(Collectors.toSet());
         String stringExpr = expression.toString();
         Matcher matcher = IDENT_REGEXP.matcher(stringExpr.replaceAll("'.*'", ""));
-        List<Column> idents = new ArrayList<>();
+        List<SelectField> idents = new ArrayList<>();
+        String fromItemSuffix = fromItem.getAlias() == null ?  fromItem.toString().substring(fromItem.toString().lastIndexOf('.') + 1) : fromItem.getAlias().getName();
         while (matcher.find()) {
             String potentialIdent = matcher.group(1);
-            String suffix = potentialIdent.contains(".") ? potentialIdent.substring(0, potentialIdent.lastIndexOf('.')) : potentialIdent;
+            String prefix = potentialIdent.contains(".") ? potentialIdent.substring(0, potentialIdent.lastIndexOf('.')) : potentialIdent;
             if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())
-                    && fromItem.toString().endsWith(suffix)
-                    && !existingSelectItems.contains(potentialIdent))
+                    && fromItem.toString().endsWith(prefix)
+                    && prefix.contains(fromItemSuffix)
+                    && !existingSelectItemsStr.contains(potentialIdent))
             {
-                idents.add(new Column(potentialIdent));
+                idents.add(new Column(potentialIdent).withSource(fromItem));
             }
         }
 
         return idents;
     }
 
-    private void fillIdents(Set<String> selectItemsStr, List<String> destination, String str) {
+    private void fillIdents(Set<SelectField> selectItems, List<String> destination, String str) {
+        Set<String> selectItemsStr = selectItems.stream().map(SelectField::getNonQualifiedIdent).collect(Collectors.toSet());
         Matcher matcher = IDENT_REGEXP.matcher(str.replaceAll("'.*'", ""));
         List<String> idents = new ArrayList<>();
         while (matcher.find()) {
@@ -294,7 +308,7 @@ public class Executor {
         }
     }
 
-    private void fillIdents(Set<String> selectItemsStr, List<String> whereOrParts, Expression whereClause) {
+    private void fillIdents(Set<SelectField> selectItemsStr, List<String> whereOrParts, Expression whereClause) {
         String whereExpression = whereClause.toString();
         String[] orParts = whereExpression.split("\\sOR\\s");
         for (String part : orParts) {

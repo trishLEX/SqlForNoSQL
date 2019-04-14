@@ -24,6 +24,11 @@ public class AllColumns extends SelectField {
     }
 
     @Override
+    protected void updateQualifiedName() {
+        //do nothing
+    }
+
+    @Override
     public String getQualifiedIdent() {
         return getQualifiedContent();
     }
@@ -31,6 +36,16 @@ public class AllColumns extends SelectField {
     @Override
     public String getNonQualifiedIdent() {
         return getQualifiedContent();
+    }
+
+    @Override
+    public String getNativeInDbName() {
+        return toString();
+    }
+
+    @Override
+    public String getUserInputIdent() {
+        return getNonQualifiedIdent();
     }
 
     @Override

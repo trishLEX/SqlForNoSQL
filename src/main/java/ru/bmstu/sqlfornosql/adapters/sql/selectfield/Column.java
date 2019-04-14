@@ -32,28 +32,17 @@ public class Column extends SelectField {
         return getNonQualifiedContent();
     }
 
+    @Override
+    public String getUserInputIdent() {
+        return userInputName;
+    }
+
     public String getAlias() {
         return alias;
     }
 
     public void setAlias(String alias) {
         this.alias = alias;
-    }
-
-    @Override
-    public String toString() {
-        return fullQualifiedName;
-    }
-
-    //TODO аналогичный метод в MongoUtils (дупликация кода)
-    private String makeNonQualifiedName(String qualifiedName) {
-        if (qualifiedName.contains(".")) {
-            return qualifiedName.substring(qualifiedName.lastIndexOf('.') + 1);
-        } else if (qualifiedName.equals("*")) {
-            return qualifiedName;
-        } else {
-            throw new IllegalStateException("Name must be qualified");
-        }
     }
 
     @Override
@@ -67,11 +56,11 @@ public class Column extends SelectField {
         }
 
         Column other = (Column) o;
-        return this.nonQualifiedName.equalsIgnoreCase(other.nonQualifiedName);
+        return this.fullQualifiedName.equalsIgnoreCase(other.fullQualifiedName);
     }
 
     @Override
     public int hashCode() {
-        return nonQualifiedName.toLowerCase().hashCode();
+        return fullQualifiedName.toLowerCase().hashCode();
     }
 }

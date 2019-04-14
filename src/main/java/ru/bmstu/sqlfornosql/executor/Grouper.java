@@ -3,7 +3,8 @@ package ru.bmstu.sqlfornosql.executor;
 import net.sf.jsqlparser.expression.Expression;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
-import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SqlFunction;
@@ -22,13 +23,13 @@ import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 public class Grouper {
     //TODO Check that collections are sets
     //TODO having unsupported
-    public static Table group(Table table, Collection<String> groupBys, Collection<SelectField> columns, @Nullable Expression havingClause) {
+    public static Table group(SqlHolder holder, Table table, Collection<SelectField> groupBys, Collection<SelectField> columns, @Nullable Expression havingClause) {
         Table result = new Table();
-        Map<Map<String, Object>, Row> index = new HashMap<>();
+        Map<Map<SelectField, Object>, Row> index = new HashMap<>();
         for (Row row : table.getRows()) {
-            Map<String, Object> indexEntry = new HashMap<>();
-            for (String column : groupBys) {
-                indexEntry.put(column, row.getObject(column.toLowerCase()));
+            Map<SelectField, Object> indexEntry = new HashMap<>();
+            for (SelectField column : groupBys) {
+                indexEntry.put(column, row.getObject(column));
             }
 
             if (index.containsKey(indexEntry)) {
@@ -46,7 +47,7 @@ public class Grouper {
                 Comparable[] values = new Comparable[colMapping.size()];
 
                 for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
-                    values[colMappingEntry.getValue()] = getValue(row, colMappingEntry.getKey());
+                    values[colMappingEntry.getValue()] = getValue(row, holder.getByUserInput(colMappingEntry.getKey()));
                 }
 
                 try {
@@ -65,23 +66,23 @@ public class Grouper {
         return result;
     }
 
-    private static Row mergeRows(Row a, Row b, Collection<SelectField> columns, Collection<String> groupBys, Map<String, RowType> typeMap, Table table) {
+    private static Row mergeRows(Row a, Row b, Collection<SelectField> columns, Collection<SelectField> groupBys, Map<SelectField, RowType> typeMap, Table table) {
         Row row = new Row(table);
-        for (SelectField field : columns) {
+        for (SelectField column : columns) {
             //TODO type должен определяться динамически (вдруг null и int были)
-            String column = field.getNonQualifiedContent();
             if (groupBys.contains(column)) {
                 System.out.println("should be equals: " + a.getObject(column) + " " + b.getObject(column));
                 row.add(column, typeMap.get(column));
             } else {
-                if (column.toLowerCase().startsWith("avg(")) {
-                    String countColumn = "count(" + column.substring(4);
+                if (column.getUserInputName().toLowerCase().startsWith("avg(")) {
+                    Column countColumn = new Column("count(" + column.getNonQualifiedIdent().substring(4));
+                    countColumn.setSource(column.getSource());
                     row.add(column, avg(a.getDouble(column), a.getInt(countColumn), b.getDouble(column), b.getInt(countColumn)));
                     row.add(countColumn, a.getInt(countColumn) + b.getInt(countColumn));
                     table.setType(column, typeMap.get(column));
                     table.setType(countColumn, RowType.INT);
                 } else {
-                    row.add(column, mergeValues(a, b, column, typeMap));
+                    row.add(column, mergeValues(a, b, (SelectFieldExpression) column, typeMap));
                     table.setType(column, typeMap.get(column));
                 }
             }
@@ -90,27 +91,29 @@ public class Grouper {
         return row;
     }
 
-    private static Row defaultRow(Row row, Collection<SelectField> columns, Map<String, RowType> typeMap, Table table) {
+    private static Row defaultRow(Row row, Collection<SelectField> columns, Map<SelectField, RowType> typeMap, Table table) {
         Row resRow = new Row(table);
         for (SelectField column : columns) {
             if (column instanceof SelectFieldExpression) {
                 SelectFieldExpression expression = (SelectFieldExpression) column;
                 if (expression.getFunction() == SqlFunction.COUNT) {
-                    resRow.add(column.getNonQualifiedContent(), 1);
-                    table.setType(column.getNonQualifiedContent(), RowType.INT);
+                    resRow.add(column, 1);
+                    table.setType(column, RowType.INT);
                 } else if (expression.getFunction() == SqlFunction.AVG) {
-                    resRow.add(column.getNonQualifiedContent(), row.getObject(expression.getColumn().getNonQualifiedContent()));
-                    table.setType(column.getNonQualifiedContent(), typeMap.get(expression.getColumn().getNonQualifiedContent()));
+                    resRow.add(column, row.getObject(expression.getColumn()));
+                    table.setType(column, typeMap.get(expression.getColumn()));
 
-                    resRow.add("count(" + expression.getColumn().getNonQualifiedContent() + ")", 1);
-                    table.setType("count(" + expression.getColumn().getNonQualifiedContent() + ")", RowType.INT);
+                    Column countColumn = new Column("count(" + expression.getColumn().getNonQualifiedContent() + ")");
+                    countColumn.setSource(expression.getSource());
+                    resRow.add(countColumn, 1);
+                    table.setType(countColumn, RowType.INT);
                 } else {
-                    resRow.add(column.getNonQualifiedContent(), row.getObject(expression.getColumn().getNonQualifiedContent()));
-                    table.setType(column.getNonQualifiedContent(), typeMap.get(expression.getColumn().getNonQualifiedContent()));
+                    resRow.add(column, row.getObject(expression.getColumn()));
+                    table.setType(column, typeMap.get(expression.getColumn()));
                 }
             } else {
-                resRow.add(column.getNonQualifiedContent(), row.getObject(column.getNonQualifiedContent()));
-                table.setType(column.getNonQualifiedContent(), typeMap.get(column.getNonQualifiedContent()));
+                resRow.add(column, row.getObject(column));
+                table.setType(column, typeMap.get(column));
             }
 
 
@@ -144,10 +147,9 @@ public class Grouper {
 
     //TODO фикс тип данных NULL, хотелось бы иметь все таки Int и занчение null, а не тип данных null
     //TODO не поддерживается если столбец был в group by и он без аггрегационной функции
-    private static Object mergeValues(Row a, Row b, String column, Map<String, RowType> typeMap) {
-        String columnA = SqlUtils.getIdentFromSelectItem(column.toLowerCase());
-        column = column.toLowerCase();
-        switch (typeMap.get(columnA)) {
+    private static Object mergeValues(Row a, Row b, SelectFieldExpression column, Map<SelectField, RowType> typeMap) {
+        Column columnA = column.getColumn();
+        switch (typeMap.get(column)) {
             case NULL:
                 return b.getObject(column);
             case STRING:
@@ -180,16 +182,16 @@ public class Grouper {
         return (avgA * countA + avgB * countB) / (countA + countB);
     }
 
-    private static Object mergeInts(Object a, Object b, String column) {
-        if (column.toLowerCase().startsWith("min(")) {
+    private static Object mergeInts(Object a, Object b, SelectField column) {
+        if (column.getUserInputName().toLowerCase().startsWith("min(")) {
             return minInts((Integer) a, (Integer) b);
-        } else if (column.toLowerCase().startsWith("max(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("max(")) {
             return maxInts((Integer) a, (Integer) b);
-        } else if (column.toLowerCase().startsWith("sum(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("sum(")) {
             return sumInts((Integer) a, (Integer) b);
-        } else if (column.toLowerCase().startsWith("count(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("count(")) {
             return countObjects((Integer) a, (Integer) b);
-        } else if (column.toLowerCase().startsWith("avg(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("avg(")) {
             //TODO непонятно, что делать с avg
             throw new UnsupportedOperationException();
         } else {
@@ -209,16 +211,16 @@ public class Grouper {
         return a + b;
     }
 
-    private static Object mergeDoubles(Object a, Object b, String column) {
-        if (column.toLowerCase().startsWith("min(")) {
+    private static Object mergeDoubles(Object a, Object b, SelectField column) {
+        if (column.getUserInputName().toLowerCase().startsWith("min(")) {
             return minDoubles((Double) a, (Double) b);
-        } else if (column.toLowerCase().startsWith("max(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("max(")) {
             return maxDoubles((Double) a, (Double) b);
-        } else if (column.toLowerCase().startsWith("sum(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("sum(")) {
             return sumDoubles((Double) a, (Double) b);
-        } else if (column.toLowerCase().startsWith("count(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("count(")) {
             return countObjects((Integer) a, (Integer) b);
-        } else if (column.toLowerCase().startsWith("avg(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("avg(")) {
             //TODO непонятно, что делать с avg
             throw new UnsupportedOperationException();
         } else {
@@ -238,12 +240,12 @@ public class Grouper {
         return a + b;
     }
 
-    private static Object mergeDates(Object a, Object b, String column) {
-        if (column.toLowerCase().startsWith("min(")) {
+    private static Object mergeDates(Object a, Object b, SelectField column) {
+        if (column.getUserInputName().toLowerCase().startsWith("min(")) {
             return minDates((LocalDateTime) a, (LocalDateTime) b);
-        } else if (column.toLowerCase().startsWith("max(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("max(")) {
             return maxDates((LocalDateTime) a, (LocalDateTime) b);
-        } else if (column.toLowerCase().startsWith("count(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("count(")) {
             return countObjects((Integer) a, (Integer) b);
         } else {
             throw new IllegalArgumentException("Can't aggregate dates in column: " + column);
@@ -272,8 +274,8 @@ public class Grouper {
         }
     }
 
-    private static Object mergeBools(Object a, Object b, String column) {
-        if (column.toLowerCase().startsWith("count(")) {
+    private static Object mergeBools(Object a, Object b, SelectField column) {
+        if (column.getUserInputName().toLowerCase().startsWith("count(")) {
             return countObjects((Integer) a, (Integer) b);
         } else {
             throw new IllegalArgumentException("Can't aggregate bools in column: " + column);
@@ -281,12 +283,12 @@ public class Grouper {
     }
 
     //TODO check column names
-    private static Object mergeStrings(Object a, Object b, String column) {
-        if (column.toLowerCase().startsWith("min(")) {
+    private static Object mergeStrings(Object a, Object b, SelectField column) {
+        if (column.getUserInputName().toLowerCase().startsWith("min(")) {
             return minStrings((String) a, (String) b);
-        } else if (column.toLowerCase().startsWith("max(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("max(")) {
             return maxStrings((String) a, (String) b);
-        } else if (column.toLowerCase().startsWith("count(")) {
+        } else if (column.getUserInputName().toLowerCase().startsWith("count(")) {
             return countObjects((Integer) a, (Integer) b);
         } else {
             throw new IllegalArgumentException("Can't aggregate strings in column: " + column);

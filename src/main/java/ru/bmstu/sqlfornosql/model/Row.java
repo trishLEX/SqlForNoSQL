@@ -95,6 +95,16 @@ public class Row {
         }
     }
 
+    public Object getObject(String key) {
+        for (Map.Entry<SelectField, Object> rowEntry : values.entrySet()) {
+            if (rowEntry.getKey().getUserInputName().equalsIgnoreCase(key)) {
+                return rowEntry.getValue();
+            }
+        }
+
+        throw new IllegalArgumentException("No column with name: " + key);
+    }
+
     public void remove(Collection<SelectField> keys) {
         for (SelectField key : keys) {
             Object removed = values.remove(key);

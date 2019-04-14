@@ -55,13 +55,18 @@ public class SelectFieldExpression extends SelectField {
     }
 
     @Override
-    public String toString() {
-        return function.name().toLowerCase() + "(" + column.getQualifiedContent() + ")";
+    protected void updateQualifiedName() {
+        column.setSource(getSource());
     }
 
     @Override
-    protected void updateQualifiedName() {
-        column.setSource(getSource());
+    public String getNativeInDbName() {
+        return function.name() + "(" + column.getNativeInDbName() + ")";
+    }
+
+    @Override
+    public String getUserInputIdent() {
+        return column.getUserInputIdent();
     }
 
     @Override

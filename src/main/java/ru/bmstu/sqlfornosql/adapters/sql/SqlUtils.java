@@ -116,7 +116,11 @@ public class SqlUtils {
             return getCountExpression((SelectExpressionItem) field, fieldStr);
         } else {
             SelectExpressionItem item = (SelectExpressionItem) field;
-            return new ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column(fieldStr, item.getAlias().getName());
+            if (item.getAlias() != null) {
+                return new ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column(fieldStr, item.getAlias().getName());
+            } else {
+                return new ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column(fieldStr);
+            }
         }
     }
 

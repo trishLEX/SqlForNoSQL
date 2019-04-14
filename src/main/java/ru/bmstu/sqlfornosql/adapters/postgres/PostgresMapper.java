@@ -1,6 +1,8 @@
 package ru.bmstu.sqlfornosql.adapters.postgres;
 
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
@@ -10,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -21,20 +24,23 @@ public class PostgresMapper {
         Table table = new Table();
         try (resultSet){
             ResultSetMetaData metaData = resultSet.getMetaData();
+            Map<String, SelectField> columns = new HashMap<>();
+            for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                columns.put(metaData.getColumnName(i), new Column(metaData.getColumnName(i)).withSource(query.getFromItem()));
+            }
+
             while (resultSet.next()) {
                 Row row = new Row(table);
-                Map<String, RowType> typeMap = new LinkedHashMap<>();
+                Map<SelectField, RowType> typeMap = new LinkedHashMap<>();
                 for (int i = 1; i <= metaData.getColumnCount(); i++) {
                     RowType type = getTypeFromSqlType(metaData.getColumnType(i));
                     if (!query.isSelectAll()) {
                         //String column = query.getFieldByNonQualifiedName(metaData.getColumnName(i)).getQualifiedContent();
-                        String column = query.getSelectFields().get(i - 1).getQualifiedContent().toLowerCase();
+                        SelectField column = query.getSelectFields().get(i - 1);
                         row.add(column, getPostgresValue(resultSet, i, type));
                         typeMap.put(column, type);
                     } else {
-                        //TODO inconsistency, в mongo при select all префикс не дописывается
-                        //String column = query.getDatabase().toString() + "." + metaData.getColumnName(i);
-                        String column = metaData.getColumnName(i);
+                        SelectField column = columns.get(metaData.getColumnName(i));
                         row.add(column, getPostgresValue(resultSet, i, type));
                         typeMap.put(column, type);
                     }
