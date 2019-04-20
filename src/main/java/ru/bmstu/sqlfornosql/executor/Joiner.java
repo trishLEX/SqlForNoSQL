@@ -14,26 +14,31 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.getIdentMapping;
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.prepareSqlJEP;
 
 @ParametersAreNonnullByDefault
 public class Joiner {
-    public static Table join(SqlHolder holder, Table from, List<Table> joinTables, List<Join> joins, @Nullable Expression where) {
-        Table leftTable = from;
-        for (int i = 0; i < joins.size(); i++) {
-            Table rightTable = joinTables.get(i);
-            Join join = joins.get(i);
+    public static CompletableFuture<Table> join(SqlHolder holder, Table from, List<Table> joinTables, List<Join> joins, @Nullable Expression where) {
+        return CompletableFuture.supplyAsync(
+                () -> {
+                    Table leftTable = from;
+                    for (int i = 0; i < joins.size(); i++) {
+                        Table rightTable = joinTables.get(i);
+                        Join join = joins.get(i);
 
-            if (join.getOnExpression() != null) {
-                leftTable = join(holder, leftTable, rightTable, join.getOnExpression(), where);
-            } else {
-                leftTable = join(holder, leftTable, rightTable, where);
-            }
-        }
+                        if (join.getOnExpression() != null) {
+                            leftTable = join(holder, leftTable, rightTable, join.getOnExpression(), where);
+                        } else {
+                            leftTable = join(holder, leftTable, rightTable, where);
+                        }
+                    }
 
-        return leftTable;
+                    return leftTable;
+                },
+                Executor.EXECUTOR);
     }
 
     //TODO join работает сейчас только по полям, которые есть в selectItems!!!

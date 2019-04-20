@@ -5,6 +5,8 @@ import org.junit.Test;
 import ru.bmstu.sqlfornosql.executor.Executor;
 import ru.bmstu.sqlfornosql.model.Table;
 
+import java.util.concurrent.CompletableFuture;
+
 public class PostgresClientTest {
     private Executor executor;
 
@@ -15,13 +17,13 @@ public class PostgresClientTest {
 
     @Test
     public void selectAllTest() {
-        Table table = executor.execute("SELECT * FROM postgres.postgres.test.test");
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute("SELECT * FROM postgres.postgres.test.test");
+        System.out.println(table.join());
     }
 
     @Test
     public void groupByTest() {
-        Table table = executor.execute("SELECT max(test.intField), max(test.dateField) FROM postgres.postgres.test.test GROUP BY test.intField");
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute("SELECT max(test.intField), max(test.dateField) FROM postgres.postgres.test.test GROUP BY test.intField");
+        System.out.println(table.join());
     }
 }

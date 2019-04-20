@@ -4,6 +4,8 @@ import org.junit.Before;
 import org.junit.Test;
 import ru.bmstu.sqlfornosql.model.Table;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 
 public class ExecutorTest {
@@ -30,37 +32,37 @@ public class ExecutorTest {
     @Test
     public void simpleSelectMongoTest() {
         String query = "SELECT * FROM mongodb.test.test";
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 
     @Test
     public void simplePostgresTest() {
         String query = "SELECT * FROM postgres.postgres.test.test";
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test(expected = CompletionException.class)
     public void selectSeveralFromItemsException() {
         String query = "SELECT test.a, test.b FROM mongodb.test.test, postgres.postgres.test.test";
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 
     @Test
     public void selectSeveralFromItemsTest() {
         String query = "SELECT mongodb.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test, postgres.postgres.test.test";
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 
     @Test
     public void selectJoinTest() {
         String query = "SELECT mongodb.test.test.intField, postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
                 "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField";
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 
     @Test
@@ -68,8 +70,8 @@ public class ExecutorTest {
         String query = "SELECT postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
                 "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField " +
                 "WHERE mongodb.test.test.intField = 123";
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 
     @Test
@@ -77,22 +79,22 @@ public class ExecutorTest {
         String query = "SELECT mongodb.test.test.intField, postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
                 "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField " +
                 "WHERE mongodb.test.test.intField + postgres.test.test.intField = 246";
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 
     @Test
     public void simpleSubSelect() {
         String query = "SELECT t.intField FROM (SELECT * FROM postgres.postgres.test.test) AS t WHERE t.intField = 123";
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 
     @Test
     public void groupBySubSelect() {
         String query = "SELECT sum(t.intField) FROM (SELECT * FROM postgres.postgres.test.test) as t GROUP BY t.intField";
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 
     @Test
@@ -101,15 +103,15 @@ public class ExecutorTest {
                 "(SELECT * FROM postgres.postgres.test.test) as t WHERE t.intField = 123 " +
                 "GROUP BY t.intField";
 
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 
     @Test
     public void joinWithSubSelect() {
         String query = "SELECT t.intField, mongodb.test.test.dateField FROM (SELECT * FROM postgres.postgres.test.test) as t " +
                 "JOIN mongodb.test.test ON t.intField = mongodb.test.test.intField";
-        Table table = executor.execute(query);
-        System.out.println(table);
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
     }
 }
