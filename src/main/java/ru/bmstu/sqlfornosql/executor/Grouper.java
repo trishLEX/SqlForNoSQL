@@ -3,6 +3,7 @@ package ru.bmstu.sqlfornosql.executor;
 import net.sf.jsqlparser.expression.Expression;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
+import ru.bmstu.sqlfornosql.adapters.postgres.PostgresMapper;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
@@ -13,16 +14,151 @@ import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
 
 import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
+import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 
+@ParametersAreNonnullByDefault
 public class Grouper {
+    static {
+        try {
+            Class.forName("org.h2.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("Can't load driver", e);
+        }
+    }
+
+    public static Table groupInDb(SqlHolder holder, Table table, Collection<SelectField> groupBys, Collection<SelectField> columns, @Nullable Expression havingClause) {
+        try (Connection connection = DriverManager.getConnection("jdbc:h2:~/sqlForNoSql;AUTO_SERVER=TRUE", "h2", "")) {
+            connection.setAutoCommit(false);
+
+            try {
+                try (Statement statement = connection.createStatement()) {
+                    dropTable(statement);
+                }
+
+                try (Statement statement = connection.createStatement()) {
+                    createTable(table, statement);
+                }
+
+                try (Statement statement = connection.createStatement()) {
+                    insertValues(table, statement);
+                }
+
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            }
+
+            ResultSet rs = group(columns, groupBys, havingClause, connection.createStatement());
+
+            return new PostgresMapper().mapResultSet(rs, holder);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Can't perform h2 query", e);
+        }
+    }
+
+    private static void dropTable(Statement statement) throws SQLException {
+        statement.execute("DROP TABLE IF EXISTS supportTable1");
+    }
+
+    private static ResultSet group(Collection<SelectField> columns, Collection<SelectField> groupBys, @Nullable Expression havingClause, Statement statement) throws SQLException {
+        String query = "SELECT " +
+                columns.stream()
+                        .map(SelectField::getQuotedFullQualifiedContent)
+                        .collect(Collectors.joining(", ")) +
+                " FROM supportTable1 GROUP BY " +
+                groupBys.stream()
+                        .map(SelectField::getQuotedFullQualifiedContent)
+                        .collect(Collectors.joining(", "));
+
+        if (havingClause != null) {
+            List<String> idents = ExecutorUtils.getIdentsFromString(havingClause.toString());
+            String havingQuery = " HAVING " + havingClause.toString();
+            for (String ident : idents) {
+                havingQuery = havingQuery.replace(ident, "\"" + ident.toLowerCase() + "\"");
+            }
+
+            query += havingQuery;
+        }
+        return statement.executeQuery(query);
+    }
+
+    private static void createTable(Table table, Statement statement) throws SQLException {
+        StringBuilder query = new StringBuilder("CREATE TABLE supportTable1 ( ");
+        int i = 0;
+        for (Map.Entry<SelectField, RowType> field : table.getTypeMap().entrySet()) {
+            query.append('"').append(field.getKey().getQualifiedContent()).append('"').append(" ").append(field.getValue().getSqlName());
+            if (i < table.getTypeMap().size() - 1) {
+                query.append(", ");
+                i++;
+            }
+        }
+        query.append(");");
+        statement.execute(query.toString());
+    }
+
+    private static void insertValues(Table table, Statement statement) throws SQLException {
+        StringBuilder query = new StringBuilder("INSERT INTO supportTable1 VALUES ");
+        int i = 0;
+        for (Row row : table.getRows()) {
+            query.append('(');
+            int j = 0;
+            for (SelectField selectField : table.getColumns()) {
+                switch (table.getType(selectField)) {
+                    case STRING:
+                        if (row.getObject(selectField) == null) {
+                            query.append(row.getObject(selectField));
+                        } else {
+                            query.append("'").append(row.getString(selectField)).append("'");
+                        }
+                        break;
+                    case DATE:
+                        if (row.getObject(selectField) == null) {
+                            query.append(row.getObject(selectField));
+                        } else {
+                            query.append("'").append(row.getDate(selectField)).append("'").append("::").append("TIMESTAMP");
+                        }
+                        break;
+                    case BOOLEAN:
+                        query.append(row.getBool(selectField));
+                        break;
+                    case DOUBLE:
+                        query.append(row.getDouble(selectField));
+                        break;
+                    case INT:
+                        query.append(row.getInt(selectField));
+                        break;
+                    case NULL:
+                        query.append("null");
+                        break;
+                    default:
+                        throw new IllegalStateException("Unknown type");
+                }
+
+                if (j < table.getColumns().size() - 1) {
+                    query.append(", ");
+                    j++;
+                }
+            }
+            query.append(")");
+            if (i < table.getRows().size() - 1) {
+                query.append(", ");
+                i++;
+            }
+        }
+        statement.execute(query.toString());
+    }
+
     //TODO Check that collections are sets
-    //TODO having unsupported
     public static Table group(SqlHolder holder, Table table, Collection<SelectField> groupBys, Collection<SelectField> columns, @Nullable Expression havingClause) {
         Table result = new Table();
         Map<Map<SelectField, Object>, Row> index = new HashMap<>();

@@ -70,6 +70,11 @@ public class SelectFieldExpression extends SelectField {
     }
 
     @Override
+    public String getQuotedFullQualifiedContent() {
+        return function.name() + "(" + column.getQuotedFullQualifiedContent() + ")";
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;

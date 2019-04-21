@@ -66,10 +66,27 @@ public class ExecutorTest {
     }
 
     @Test
+    public void selectJoinOnFieldNotInSelect() {
+        String query = "SELECT postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
+                "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField";
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
+    }
+
+    @Test
     public void selectJoinTestWhereOneTable() {
         String query = "SELECT postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
                 "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField " +
                 "WHERE mongodb.test.test.intField = 123";
+        CompletableFuture<Table> table = executor.execute(query);
+        System.out.println(table.join());
+    }
+
+    @Test
+    public void selectJoinGroupBy() {
+        String query = "SELECT max(postgres.test.test.dateField), postgres.test.test.intField FROM postgres.postgres.test.test JOIN mongodb.test.test " +
+                "ON mongodb.test.test.intField = postgres.test.test.intField " +
+                "GROUP BY postgres.test.test.intField";
         CompletableFuture<Table> table = executor.execute(query);
         System.out.println(table.join());
     }

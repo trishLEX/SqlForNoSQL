@@ -69,11 +69,9 @@ public class SqlHolder {
 
     public static class SqlHolderBuilder {
         private SqlHolder holder;
-        private Map<String, FromItem> prefixesToFromItem;
 
         public SqlHolderBuilder() {
             this.holder = new SqlHolder();
-            this.prefixesToFromItem = new HashMap<>();
         }
 
         public SqlHolderBuilder withDistinct(boolean isDistinct) {
@@ -148,6 +146,9 @@ public class SqlHolder {
         public SqlHolderBuilder withJoins(@Nullable List<Join> joins) {
             if (joins != null) {
                 holder.joins = joins;
+                for (Join join : joins) {
+                    holder.selectItemMap.put(join.getRightItem(), Lists.newArrayList());
+                }
             }
             return this;
         }

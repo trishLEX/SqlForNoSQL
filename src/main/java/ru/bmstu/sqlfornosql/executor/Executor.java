@@ -267,18 +267,18 @@ public class Executor {
         }
 
         //TODO можно оптимизировать: не нужно дополнительный раз вставлять whereClause
-        CompletableFuture<Table> result = Joiner.join(
+        return Joiner.join(
                 sqlHolder,
                 from.join(),
-                resultParts.values()
-                        .stream()
-                        .map(CompletableFuture::join)
-                        .collect(Collectors.toList()),
+                resultParts.values().stream().collect(Collectors.toList()),
                 sqlHolder.getJoins(),
                 sqlHolder.getWhereClause()
-        );
-        result.thenAccept(table -> table.remove(Sets.difference(additionalSelectItems, Sets.newHashSet(sqlHolder.getSelectFields()))));
-        return result;
+        ).thenApplyAsync(
+                table -> {
+                    table.remove(Sets.difference(additionalSelectItems, Sets.newHashSet(sqlHolder.getSelectFields())));
+                    return table;
+                },
+                EXECUTOR);
     }
 
     //TODO не поддерживатся USING
@@ -316,13 +316,7 @@ public class Executor {
 
     private void fillIdents(Set<SelectField> selectItems, List<String> destination, String str) {
         Set<String> selectItemsStr = selectItems.stream().map(SelectField::getNonQualifiedIdent).collect(Collectors.toSet());
-        Matcher matcher = IDENT_REGEXP.matcher(str.replaceAll("'.*'", ""));
-        List<String> idents = new ArrayList<>();
-        while (matcher.find()) {
-            if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
-                idents.add(matcher.group(1));
-            }
-        }
+        List<String> idents = ExecutorUtils.getIdentsFromString(str);
 
         if (selectItemsStr.containsAll(idents)) {
             destination.add(str);

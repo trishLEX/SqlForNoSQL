@@ -11,6 +11,7 @@ public abstract class SelectField {
     public abstract String getQualifiedIdent();
     public abstract String getNonQualifiedIdent();
     public abstract String getUserInputIdent();
+    public abstract String getQuotedFullQualifiedContent();
 
     protected FromItem source;
     protected String fullQualifiedName;

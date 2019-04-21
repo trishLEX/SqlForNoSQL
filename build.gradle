@@ -22,5 +22,6 @@ dependencies {
     compile group: 'one.util', name: 'streamex', version: '0.6.8'
     compile group: 'com.joestelmach', name: 'natty', version: '0.13'
     compile group: 'org.postgresql', name: 'postgresql', version: '42.2.5'
+    compile group: 'com.h2database', name: 'h2', version: '1.4.199'
     compile fileTree('libs') {include '*.jar'}
 }

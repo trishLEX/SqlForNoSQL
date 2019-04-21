@@ -49,6 +49,11 @@ public class AllColumns extends SelectField {
     }
 
     @Override
+    public String getQuotedFullQualifiedContent() {
+        return getQualifiedContent();
+    }
+
+    @Override
     public boolean equals(Object o) {
         return this == o;
     }

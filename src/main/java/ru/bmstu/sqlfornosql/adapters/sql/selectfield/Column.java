@@ -37,6 +37,11 @@ public class Column extends SelectField {
         return userInputName;
     }
 
+    @Override
+    public String getQuotedFullQualifiedContent() {
+        return '"' + fullQualifiedName + '"';
+    }
+
     public String getAlias() {
         return alias;
     }

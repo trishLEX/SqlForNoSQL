@@ -6,7 +6,9 @@ import org.medfoster.sqljep.RowJEP;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Row;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.regex.Matcher;
 
 import static ru.bmstu.sqlfornosql.executor.Executor.FORBIDDEN_STRINGS;
@@ -43,5 +45,17 @@ public class ExecutorUtils {
 
     public static Comparable getValue(Row row, String key) {
         return (Comparable) row.getObject(key);
+    }
+
+    public static List<String> getIdentsFromString(String str) {
+        Matcher matcher = IDENT_REGEXP.matcher(str.replaceAll("'.*'", ""));
+        List<String> idents = new ArrayList<>();
+        while (matcher.find()) {
+            if (!FORBIDDEN_STRINGS.contains(matcher.group(1).toUpperCase())) {
+                idents.add(matcher.group(1));
+            }
+        }
+
+        return idents;
     }
 }

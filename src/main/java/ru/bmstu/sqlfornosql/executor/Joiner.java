@@ -21,12 +21,12 @@ import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.prepareSqlJEP;
 
 @ParametersAreNonnullByDefault
 public class Joiner {
-    public static CompletableFuture<Table> join(SqlHolder holder, Table from, List<Table> joinTables, List<Join> joins, @Nullable Expression where) {
+    public static CompletableFuture<Table> join(SqlHolder holder, Table from, List<CompletableFuture<Table>> joinTables, List<Join> joins, @Nullable Expression where) {
         return CompletableFuture.supplyAsync(
                 () -> {
                     Table leftTable = from;
                     for (int i = 0; i < joins.size(); i++) {
-                        Table rightTable = joinTables.get(i);
+                        Table rightTable = joinTables.get(i).join();
                         Join join = joins.get(i);
 
                         if (join.getOnExpression() != null) {
