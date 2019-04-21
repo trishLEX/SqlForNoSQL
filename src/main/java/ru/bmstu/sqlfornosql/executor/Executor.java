@@ -116,10 +116,11 @@ public class Executor {
                         for (Row subSelectRow : subSelectResult.getRows()) {
                             Row row = new Row(result);
                             for (SelectField column : sqlHolder.getSelectFields()) {
+                                //TODO неправильно обрабатываются колонки. (если не будте group by, то аггрег. функция не применится)
                                 if (column instanceof SelectFieldExpression) {
                                     Column ident = ((SelectFieldExpression) column).getColumn();
                                     row.add(ident, subSelectRow.getObject(ident));
-                                    result.setType(column, subSelectResult.getType(ident));
+                                    result.setType(ident, subSelectResult.getType(ident));
                                 } else {
                                     row.add(column, subSelectRow.getObject(column));
                                     result.setType(column, subSelectResult.getType(column));

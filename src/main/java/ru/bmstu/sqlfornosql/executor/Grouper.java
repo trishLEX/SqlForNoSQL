@@ -1,8 +1,6 @@
 package ru.bmstu.sqlfornosql.executor;
 
 import net.sf.jsqlparser.expression.Expression;
-import org.medfoster.sqljep.ParseException;
-import org.medfoster.sqljep.RowJEP;
 import ru.bmstu.sqlfornosql.adapters.postgres.PostgresMapper;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
@@ -18,12 +16,9 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 
 @ParametersAreNonnullByDefault
 public class Grouper {
@@ -159,47 +154,49 @@ public class Grouper {
     }
 
     //TODO Check that collections are sets
+    @Deprecated
     public static Table group(SqlHolder holder, Table table, Collection<SelectField> groupBys, Collection<SelectField> columns, @Nullable Expression havingClause) {
-        Table result = new Table();
-        Map<Map<SelectField, Object>, Row> index = new HashMap<>();
-        for (Row row : table.getRows()) {
-            Map<SelectField, Object> indexEntry = new HashMap<>();
-            for (SelectField column : groupBys) {
-                indexEntry.put(column, row.getObject(column));
-            }
-
-            if (index.containsKey(indexEntry)) {
-                Row resRow = index.get(indexEntry);
-                index.put(indexEntry, mergeRows(row, resRow, columns, groupBys, table.getTypeMap(), result));
-            } else {
-                index.put(indexEntry, defaultRow(row, columns, table.getTypeMap(), result));
-            }
-        }
-
-        for (Row row : index.values()) {
-            if (havingClause != null) {
-                HashMap<String, Integer> colMapping = getIdentMapping(havingClause.toString());
-                RowJEP sqljep = prepareSqlJEP(havingClause, colMapping);
-                Comparable[] values = new Comparable[colMapping.size()];
-
-                for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
-                    values[colMappingEntry.getValue()] = getValue(row, holder.getByUserInput(colMappingEntry.getKey()));
-                }
-
-                try {
-                    Boolean expressionValue = (Boolean) sqljep.getValue(values);
-                    if (expressionValue) {
-                        result.add(row);
-                    }
-                } catch (ParseException e) {
-                    throw new IllegalStateException("Can't execute expression: " + havingClause, e);
-                }
-            } else {
-                result.add(row);
-            }
-        }
-
-        return result;
+        return groupInDb(holder, table, groupBys, columns, havingClause);
+//        Table result = new Table();
+//        Map<Map<SelectField, Object>, Row> index = new HashMap<>();
+//        for (Row row : table.getRows()) {
+//            Map<SelectField, Object> indexEntry = new HashMap<>();
+//            for (SelectField column : groupBys) {
+//                indexEntry.put(column, row.getObject(column));
+//            }
+//
+//            if (index.containsKey(indexEntry)) {
+//                Row resRow = index.get(indexEntry);
+//                index.put(indexEntry, mergeRows(row, resRow, columns, groupBys, table.getTypeMap(), result));
+//            } else {
+//                index.put(indexEntry, defaultRow(row, columns, table.getTypeMap(), result));
+//            }
+//        }
+//
+//        for (Row row : index.values()) {
+//            if (havingClause != null) {
+//                HashMap<String, Integer> colMapping = getIdentMapping(havingClause.toString());
+//                RowJEP sqljep = prepareSqlJEP(havingClause, colMapping);
+//                Comparable[] values = new Comparable[colMapping.size()];
+//
+//                for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
+//                    values[colMappingEntry.getValue()] = getValue(row, holder.getByUserInput(colMappingEntry.getKey()));
+//                }
+//
+//                try {
+//                    Boolean expressionValue = (Boolean) sqljep.getValue(values);
+//                    if (expressionValue) {
+//                        result.add(row);
+//                    }
+//                } catch (ParseException e) {
+//                    throw new IllegalStateException("Can't execute expression: " + havingClause, e);
+//                }
+//            } else {
+//                result.add(row);
+//            }
+//        }
+//
+//        return result;
     }
 
     private static Row mergeRows(Row a, Row b, Collection<SelectField> columns, Collection<SelectField> groupBys, Map<SelectField, RowType> typeMap, Table table) {
