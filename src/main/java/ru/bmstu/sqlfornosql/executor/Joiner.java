@@ -8,12 +8,12 @@ import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.Table;
+import ru.bmstu.sqlfornosql.model.TableIterator;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.getIdentMapping;
@@ -21,24 +21,70 @@ import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.prepareSqlJEP;
 
 @ParametersAreNonnullByDefault
 public class Joiner {
-    public static CompletableFuture<Table> join(SqlHolder holder, Table from, List<CompletableFuture<Table>> joinTables, List<Join> joins, @Nullable Expression where) {
-        return CompletableFuture.supplyAsync(
-                () -> {
-                    Table leftTable = from;
-                    for (int i = 0; i < joins.size(); i++) {
-                        Table rightTable = joinTables.get(i).join();
-                        Join join = joins.get(i);
+    public static TableIterator join(SqlHolder holder, TableIterator from, List<TableIterator> joinTables, List<Join> joins, @Nullable Expression where) {
+        return new TableIterator() {
+            private Iterator<Table> leftTableIterator = from.iterator();
 
+            @Nonnull
+            @Override
+            public Iterator<Table> iterator() {
+                return join(holder, from, joinTables, joins, where);
+            }
+
+            @Override
+            public boolean hasNext() {
+                return leftTableIterator.hasNext();
+            }
+
+            @Override
+            public Table next() {
+                if (hasNext()) {
+                    Table leftTable = null;
+                    CompletableFuture<Table> leftTableFuture = CompletableFuture.supplyAsync(leftTableIterator::next, Executor.EXECUTOR);
+                    for (int i = 0; i < joins.size(); i++) {
+                        Iterator<Table> rightTableIterator = joinTables.get(i).iterator();
+                        Join join = joins.get(i);
                         if (join.getOnExpression() != null) {
-                            leftTable = join(holder, leftTable, rightTable, join.getOnExpression(), where);
+                            while (rightTableIterator.hasNext()) {
+                                CompletableFuture<Table> rightTable = CompletableFuture.supplyAsync(rightTableIterator::next, Executor.EXECUTOR);
+                                leftTable = join(holder, leftTableFuture.join(), rightTable.join(), join.getOnExpression(), where);
+                            }
                         } else {
-                            leftTable = join(holder, leftTable, rightTable, where);
+                            while (rightTableIterator.hasNext()) {
+                                CompletableFuture<Table> rightTable = CompletableFuture.supplyAsync(rightTableIterator::next, Executor.EXECUTOR);
+                                leftTable = join(holder, leftTableFuture.join(), rightTable.join(), where);
+                            }
                         }
                     }
 
-                    return leftTable;
-                },
-                Executor.EXECUTOR);
+                    if (leftTable != null) {
+                        return leftTable;
+                    } else {
+                        return leftTableFuture.join();
+                    }
+                }
+
+                throw new NoSuchElementException();
+            }
+        };
+//        return CompletableFuture.supplyAsync(
+//                () -> {
+//
+//                    TableIterator leftTable = from;
+//                    for (int i = 0; i < joins.size(); i++) {
+//                        Table rightTable = joinTables.get(i).join();
+//                        Join join = joins.get(i);
+//
+//                        if (join.getOnExpression() != null) {
+//                            leftTable = join(holder, leftTable, rightTable, join.getOnExpression(), where);
+//                        } else {
+//                            leftTable = join(holder, leftTable, rightTable, where);
+//                        }
+//                    }
+//
+//                    return leftTable;
+//                },
+//                Executor.EXECUTOR);
     }
 
     //TODO join работает сейчас только по полям, которые есть в selectItems!!!

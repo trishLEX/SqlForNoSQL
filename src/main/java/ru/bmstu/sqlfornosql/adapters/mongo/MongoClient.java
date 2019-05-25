@@ -3,26 +3,43 @@ package ru.bmstu.sqlfornosql.adapters.mongo;
 import com.google.common.collect.Iterables;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import ru.bmstu.sqlfornosql.adapters.AbstractClient;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
+import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 import ru.bmstu.sqlfornosql.model.Table;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MongoClient<T extends BsonDocument> {
+public class MongoClient extends AbstractClient {
     private static final Logger logger = LogManager.getLogger(MongoClient.class);
+    private static final MongoAdapter ADAPTER = new MongoAdapter();
 
-    private MongoCollection<T> collection;
+    private MongoCollection<BsonDocument> collection;
+    private String dbName;
+    private String table;
+    private com.mongodb.MongoClient client;
 
-    public MongoClient(MongoCollection<T> mongoCollection) {
-        this.collection = mongoCollection;
+    public MongoClient(String dbName, String table) {
+        this.dbName = dbName;
+        this.table = table;
+        client = new com.mongodb.MongoClient();
+        MongoDatabase database = client.getDatabase(dbName);
+        collection = database.getCollection(table, BsonDocument.class);
     }
 
-    public Table executeQuery(MongoHolder query) {
+    public Table executeQuery(String query) {
+        return executeQuery(SqlUtils.fillSqlMeta(query));
+    }
+
+    public Table executeQuery(SqlHolder holder) {
+        MongoHolder query = ADAPTER.translate(holder);
         //TODO возможно стоит сделать его синглтоном
         MongoMapper mapper = new MongoMapper();
         //TODO distinct больше не ставится в true, вместо него выполянется group by => данная ветка бесполезна
@@ -76,6 +93,18 @@ public class MongoClient<T extends BsonDocument> {
 
             return mapper.mapFind(findIterable, query);
         }
+    }
+
+    @Override
+    public void open() {
+        client = new com.mongodb.MongoClient();
+        MongoDatabase database = client.getDatabase(dbName);
+        collection = database.getCollection(table, BsonDocument.class);
+    }
+
+    @Override
+    public void close() {
+        client.close();
     }
 
     private String getDistinctFieldName(MongoHolder query) {

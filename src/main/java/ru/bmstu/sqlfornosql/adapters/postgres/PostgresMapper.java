@@ -6,13 +6,16 @@ import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
+import ru.bmstu.sqlfornosql.model.TableIterator;
 
+import javax.annotation.Nonnull;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -20,6 +23,39 @@ import static java.sql.Types.*;
 
 @ParametersAreNonnullByDefault
 public class PostgresMapper {
+    public TableIterator mapResultSet(Iterable<ResultSet> resultSetIterator, SqlHolder query) {
+        return new TableIterator() {
+            private Iterator<ResultSet> iterator = resultSetIterator.iterator();
+
+            @Override
+            public boolean hasNext() {
+                return iterator.hasNext();
+            }
+
+            @Override
+            public Table next() {
+                return mapResultSet(iterator.next(), query);
+            }
+
+            @Nonnull
+            @Override
+            public Iterator<Table> iterator() {
+                Iterator<ResultSet> rsIterator = resultSetIterator.iterator();
+                return new Iterator<>() {
+                    @Override
+                    public boolean hasNext() {
+                        return rsIterator.hasNext();
+                    }
+
+                    @Override
+                    public Table next() {
+                        return mapResultSet(rsIterator.next(), query);
+                    }
+                };
+            }
+        };
+    }
+
     public Table mapResultSet(ResultSet resultSet, SqlHolder query) {
         Table table = new Table();
         try (resultSet){

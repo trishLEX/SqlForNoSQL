@@ -122,6 +122,11 @@ public class Row {
         return values.isEmpty();
     }
 
+    public void clear() {
+        this.table = null;
+        this.values.clear();
+    }
+
     @Override
     public String toString() {
         return "{" + Joiner.on(", ").withKeyValueSeparator(": ").useForNull("null").join(values) + "}";

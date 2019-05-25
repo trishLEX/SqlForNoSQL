@@ -67,6 +67,29 @@ public class SqlHolder {
         itemToField = new HashMap<>();
     }
 
+    public SqlHolderBuilder toBuilder() {
+        return new SqlHolderBuilder()
+                .withDistinct(isDistinct)
+                .withCountAll(isCountAll)
+                .withLimit(limit)
+                .withOffset(offset)
+                .withSelectItems(selectItems)
+                .withJoins(joins)
+                .withGroupBy(groupBys.stream().map(SelectField::toString).collect(Collectors.toList()))
+                .withOrderBy(orderByElements)
+                .withFromItem(fromItem)
+                .withWhere(whereClause)
+                .withHaving(havingClause);
+    }
+
+    public void setLimit(long limit) {
+        this.limit = limit;
+    }
+
+    public void setOffset(long offset) {
+        this.offset = offset;
+    }
+
     public static class SqlHolderBuilder {
         private SqlHolder holder;
 
@@ -662,13 +685,13 @@ public class SqlHolder {
     }
 
     private void addLimit(StringBuilder sb) {
-        if (limit != -1) {
+        if (limit > 0) {
             sb.append(" LIMIT ").append(limit);
         }
     }
 
     private void addOffset(StringBuilder sb) {
-        if (offset != -1) {
+        if (offset > 0) {
             sb.append(" OFFSET ").append(offset);
         }
     }

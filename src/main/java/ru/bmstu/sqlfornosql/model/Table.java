@@ -145,6 +145,17 @@ public class Table {
         }
     }
 
+    public void clear() {
+        this.typeMap.clear();
+        this.columns.clear();
+        this.rows.forEach(Row::clear);
+        this.rows.clear();
+    }
+
+    public long size() {
+        return rows.size();
+    }
+
     @Override
     public String toString() {
         StringBuilder res = new StringBuilder("ROWS:\n");

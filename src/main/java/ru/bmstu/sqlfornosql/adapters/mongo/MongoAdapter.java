@@ -10,17 +10,15 @@ import static ru.bmstu.sqlfornosql.adapters.sql.SqlUtils.fillSqlMeta;
 public class MongoAdapter {
     private static final Logger logger = LogManager.getLogger(MongoAdapter.class);
 
-    private SqlHolder sqlHolder;
-
     public MongoHolder translate(String sql) {
         logger.info("translating sql: " + sql);
 
         MongoHolder mongoHolder;
-        sqlHolder = fillSqlMeta(sql);
+        SqlHolder sqlHolder = fillSqlMeta(sql);
 
         mongoHolder = MongoHolder.createBySql(sqlHolder);
 
-        validate();
+        validate(sqlHolder);
 
         return mongoHolder;
     }
@@ -28,13 +26,12 @@ public class MongoAdapter {
     public MongoHolder translate(SqlHolder sqlHolder) {
         logger.info("translating sql: " + sqlHolder.toString());
 
-        this.sqlHolder = sqlHolder;
-        validate();
+        validate(sqlHolder);
 
         return MongoHolder.createBySql(sqlHolder);
     }
 
-    private void validate() {
+    private void validate(SqlHolder sqlHolder) {
         Preconditions.checkArgument(sqlHolder.getJoins() == null || sqlHolder.getJoins().isEmpty(),
                 "Joins are not supported.  Only one simple table name is supported.");
     }

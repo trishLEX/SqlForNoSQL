@@ -4,7 +4,7 @@ import org.junit.Before;
 import org.junit.Test;
 import ru.bmstu.sqlfornosql.model.Table;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.Iterator;
 import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 
@@ -32,45 +32,45 @@ public class ExecutorTest {
     @Test
     public void simpleSelectMongoTest() {
         String query = "SELECT * FROM mongodb.test.test";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
     public void simplePostgresTest() {
         String query = "SELECT * FROM postgres.postgres.test.test";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test(expected = CompletionException.class)
     public void selectSeveralFromItemsException() {
         String query = "SELECT test.a, test.b FROM mongodb.test.test, postgres.postgres.test.test";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
     public void selectSeveralFromItemsTest() {
         String query = "SELECT mongodb.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test, postgres.postgres.test.test";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
     public void selectJoinTest() {
         String query = "SELECT mongodb.test.test.intField, postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
                 "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
     public void selectJoinOnFieldNotInSelect() {
         String query = "SELECT postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
                 "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
@@ -78,8 +78,8 @@ public class ExecutorTest {
         String query = "SELECT postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
                 "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField " +
                 "WHERE mongodb.test.test.intField = 123";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
@@ -87,8 +87,8 @@ public class ExecutorTest {
         String query = "SELECT max(postgres.test.test.dateField), postgres.test.test.intField FROM postgres.postgres.test.test JOIN mongodb.test.test " +
                 "ON mongodb.test.test.intField = postgres.test.test.intField " +
                 "GROUP BY postgres.test.test.intField";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
@@ -96,22 +96,22 @@ public class ExecutorTest {
         String query = "SELECT mongodb.test.test.intField, postgres.test.test.intField, postgres.test.test.datefield FROM mongodb.test.test " +
                 "JOIN postgres.postgres.test.test ON mongodb.test.test.intField = postgres.test.test.intField " +
                 "WHERE mongodb.test.test.intField + postgres.test.test.intField = 246";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
     public void simpleSubSelect() {
         String query = "SELECT t.intField FROM (SELECT * FROM postgres.postgres.test.test) AS t WHERE t.intField = 123";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
     public void groupBySubSelect() {
         String query = "SELECT sum(t.intField) FROM (SELECT * FROM postgres.postgres.test.test) as t GROUP BY t.intField";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
@@ -120,15 +120,15 @@ public class ExecutorTest {
                 "(SELECT * FROM postgres.postgres.test.test) as t WHERE t.intField = 123 " +
                 "GROUP BY t.intField";
 
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 
     @Test
     public void joinWithSubSelect() {
         String query = "SELECT t.intField, mongodb.test.test.dateField FROM (SELECT * FROM postgres.postgres.test.test) as t " +
                 "JOIN mongodb.test.test ON t.intField = mongodb.test.test.intField";
-        CompletableFuture<Table> table = executor.execute(query);
-        System.out.println(table.join());
+        Iterator<Table> table = executor.execute(query);
+        System.out.println(table.next());
     }
 }

@@ -2,13 +2,11 @@ package ru.bmstu.sqlfornosql.executor;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import com.mongodb.client.MongoDatabase;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.statement.select.*;
-import org.bson.BsonDocument;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
-import ru.bmstu.sqlfornosql.adapters.mongo.MongoAdapter;
+import ru.bmstu.sqlfornosql.adapters.AbstractClient;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoUtils;
 import ru.bmstu.sqlfornosql.adapters.postgres.PostgresClient;
@@ -19,9 +17,10 @@ import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.Table;
+import ru.bmstu.sqlfornosql.model.TableIterator;
 
+import javax.annotation.Nonnull;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -48,11 +47,20 @@ public class Executor {
             "LIKE",
             "TRUE",
             "FALSE",
-            "NULL"
+            "NULL",
+            "SUM",
+            "MIN",
+            "MAX",
+            "AVG",
+            "COUNT"
     );
 
-    public CompletableFuture<Table> execute(String sql) {
+    public TableIterator execute(String sql) {
         SqlHolder sqlHolder = SqlUtils.fillSqlMeta(sql);
+        return execute(sqlHolder);
+    }
+
+    public TableIterator execute(SqlHolder sqlHolder) {
         if (sqlHolder.getJoins().isEmpty()) {
             return simpleSelect(sqlHolder);
         } else {
@@ -66,109 +74,114 @@ public class Executor {
      * @return таблицу с результатом выполнения запроса
      */
     //TODO здесь fromItem может быть подзапросом - это нужно обработать
-    private CompletableFuture<Table> simpleSelect(SqlHolder sqlHolder) {
+    private TableIterator simpleSelect(SqlHolder sqlHolder) {
         sqlHolder.fillColumnMap();
         if (sqlHolder.getFromItem() instanceof net.sf.jsqlparser.schema.Table) {
             switch (sqlHolder.getDatabase().getDbType()) {
                 case POSTGRES: {
-                    PostgresClient client = new PostgresClient("localhost", 5432, "postgres", "0212", "postgres");
-                    CompletableFuture<Table> result = CompletableFuture.supplyAsync(() -> client.executeQuery(sqlHolder), EXECUTOR);
-                    result.thenAccept(t -> client.close());
-                    return result;
+                    AbstractClient client = new PostgresClient("localhost", 5432, "postgres", "0212", "postgres");
+                    return new TableIterator(client, sqlHolder);
                 }
                 case MONGODB: {
-                    com.mongodb.MongoClient client = new com.mongodb.MongoClient();
-                    MongoDatabase database = client.getDatabase(sqlHolder.getDatabase().getDatabaseName());
-                    MongoAdapter adapter = new MongoAdapter();
-                    MongoClient<BsonDocument> mongoClient = new MongoClient<>(
-                            database.getCollection(sqlHolder.getDatabase().getTable(), BsonDocument.class)
-                    );
-                    CompletableFuture<Table> result = CompletableFuture.supplyAsync(() -> mongoClient.executeQuery(adapter.translate(sqlHolder)), EXECUTOR);
-                    result.thenAccept(table -> client.close());
-                    return result;
+                    MongoClient mongoClient = new MongoClient(sqlHolder.getDatabase().getDatabaseName(), sqlHolder.getDatabase().getTable());
+                    return new TableIterator(mongoClient, sqlHolder);
                 }
                 default:
                     throw new IllegalArgumentException("Unknown database type");
             }
         } else if (sqlHolder.getFromItem() instanceof SubSelect) {
             SubSelect subSelect = ((SubSelect) sqlHolder.getFromItem());
-            CompletableFuture<Table> subSelectResultFuture;
             ((PlainSelect) subSelect.getSelectBody()).getFromItem().setAlias(subSelect.getAlias());
             String subSelectStr = subSelect.toString();
             if (subSelect.isUseBrackets()) {
-                subSelectResultFuture = execute(subSelectStr.substring(1, subSelectStr.lastIndexOf(')')));
-            } else {
-                subSelectResultFuture = execute(subSelectStr);
+                subSelectStr = subSelectStr.substring(1, subSelectStr.lastIndexOf(')'));
             }
 
-            //subSelectResult.getColumns().forEach(column -> column.setFromItemAlias(subSelect.getAlias()));
+            SqlHolder subSelectHolder = SqlUtils.fillSqlMeta(subSelectStr);
+            if (!sqlHolder.getGroupBys().isEmpty()) {
+                Iterator<Table> iterator = execute(subSelectStr);
+                return Grouper.groupInDb(sqlHolder, iterator, "support_table_" + System.currentTimeMillis());
+            } else {
+                if (sqlHolder.getOrderByElements() != null) {
+                    subSelectHolder.getOrderByElements().addAll(sqlHolder.getOrderByElements());
+                }
+            }
 
-//            for (String col : sqlHolder.getSelectItemsStrings()) {
-//                if (col.startsWith("avg(")) {
-//                    sqlHolder.addAdditionalItemString("count" + col.substring(3));
-//                }
-//            }
+            TableIterator subSelectIterator = execute(subSelectHolder);
+            return new TableIterator() {
+                @Nonnull
+                @Override
+                public Iterator<Table> iterator() {
+                    return subSelectIterator.iterator();
+                }
 
-            Table subSelectResult = subSelectResultFuture.join();
-            return CompletableFuture.supplyAsync(
-                    () -> {
-                        Table result = new Table();
-                        for (Row subSelectRow : subSelectResult.getRows()) {
-                            Row row = new Row(result);
-                            for (SelectField column : sqlHolder.getSelectFields()) {
-                                //TODO неправильно обрабатываются колонки. (если не будте group by, то аггрег. функция не применится)
-                                if (column instanceof SelectFieldExpression) {
-                                    Column ident = ((SelectFieldExpression) column).getColumn();
-                                    row.add(ident, subSelectRow.getObject(ident));
-                                    result.setType(ident, subSelectResult.getType(ident));
-                                } else {
-                                    row.add(column, subSelectRow.getObject(column));
-                                    result.setType(column, subSelectResult.getType(column));
-                                }
-                            }
+                @Override
+                public boolean hasNext() {
+                    return subSelectIterator.hasNext();
+                }
 
-                            if (sqlHolder.getWhereClause() != null) {
-                                HashMap<String, Integer> colMapping = getIdentMapping(sqlHolder.getWhereClause().toString().toLowerCase());
-                                RowJEP sqljep = prepareSqlJEP(sqlHolder.getWhereClause(), colMapping);
-                                Comparable[] values = new Comparable[colMapping.size()];
-
-                                for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
-                                    values[colMappingEntry.getValue()] = getValue(row, colMappingEntry.getKey());
-                                }
-
-                                try {
-                                    Boolean expressionValue = (Boolean) sqljep.getValue(values);
-                                    if (expressionValue) {
-                                        result.add(row);
-                                    }
-                                } catch (ParseException e) {
-                                    throw new IllegalStateException("Can't execute expression: " + sqlHolder.getWhereClause(), e);
-                                }
+                @Override
+                public Table next() {
+                    Table result = new Table();
+                    Table subSelectResult = subSelectIterator.next();
+                    for (Row subSelectRow : subSelectResult.getRows()) {
+                        Row row = new Row(result);
+                        for (SelectField column : sqlHolder.getSelectFields()) {
+                            //TODO неправильно обрабатываются колонки. (если не будте group by, то аггрег. функция не применится)
+                            if (column instanceof SelectFieldExpression) {
+                                Column ident = ((SelectFieldExpression) column).getColumn();
+                                row.add(ident, subSelectRow.getObject(ident));
+                                result.setType(ident, subSelectResult.getType(ident));
                             } else {
-                                result.add(row);
+                                row.add(column, subSelectRow.getObject(column));
+                                result.setType(column, subSelectResult.getType(column));
                             }
                         }
 
-                        if (!sqlHolder.getGroupBys().isEmpty()) {
-                            result = Grouper.group(sqlHolder, result, sqlHolder.getGroupBys(), sqlHolder.getSelectFields(), sqlHolder.getHavingClause());
-                        }
+                        if (sqlHolder.getWhereClause() != null) {
+                            HashMap<String, Integer> colMapping = getIdentMapping(sqlHolder.getWhereClause().toString().toLowerCase());
+                            RowJEP sqljep = prepareSqlJEP(sqlHolder.getWhereClause(), colMapping);
+                            Comparable[] values = new Comparable[colMapping.size()];
 
-                        if (!sqlHolder.getOrderByElements().isEmpty()) {
-                            LinkedHashMap<SelectField, Boolean> orderByMap = new LinkedHashMap<>();
-                            for (OrderByElement element : sqlHolder.getOrderByElements()) {
-                                //TODO order by можно выполянть по expression'у
-                                orderByMap.put(
-                                        sqlHolder.getFieldByNonQualifiedName(
-                                                MongoUtils.getNonQualifiedName(element.toString())
-                                        ),
-                                        element.isAsc());
+                            for (Map.Entry<String, Integer> colMappingEntry : colMapping.entrySet()) {
+                                values[colMappingEntry.getValue()] = getValue(row, colMappingEntry.getKey());
                             }
-                            result.sort(orderByMap);
-                        }
 
-                        return result;
-                    },
-                    EXECUTOR);
+                            try {
+                                Boolean expressionValue = (Boolean) sqljep.getValue(values);
+                                if (expressionValue) {
+                                    result.add(row);
+                                }
+                            } catch (ParseException e) {
+                                throw new IllegalStateException("Can't execute expression: " + sqlHolder.getWhereClause(), e);
+                            }
+                        } else {
+                            result.add(row);
+                        }
+                    }
+
+                    if (!sqlHolder.getGroupBys().isEmpty()) {
+                        //TODO REMOVE THIS
+                        result = Grouper.group(sqlHolder, List.of(result).iterator(), "support_table_" + System.currentTimeMillis()).next();
+                        throw new IllegalStateException("It's not supposed to be here");
+                    }
+
+                    if (!sqlHolder.getOrderByElements().isEmpty()) {
+                        LinkedHashMap<SelectField, Boolean> orderByMap = new LinkedHashMap<>();
+                        for (OrderByElement element : sqlHolder.getOrderByElements()) {
+                            //TODO order by можно выполянть по expression'у
+                            orderByMap.put(
+                                    sqlHolder.getFieldByNonQualifiedName(
+                                            MongoUtils.getNonQualifiedName(element.toString())
+                                    ),
+                                    element.isAsc());
+                        }
+                        result.sort(orderByMap);
+                    }
+
+                    return result;
+                }
+            };
         } else {
             throw new IllegalStateException("Can't determine type of FROM argument");
         }
@@ -180,8 +193,8 @@ public class Executor {
      * @return таблицу с результато выполнения запроса
      */
     //TODO нужно отрефакторить
-    private CompletableFuture<Table> selectWithJoins(SqlHolder sqlHolder) {
-        Map<FromItem, CompletableFuture<Table>> resultParts = new LinkedHashMap<>();
+    private TableIterator selectWithJoins(SqlHolder sqlHolder) {
+        Map<FromItem, TableIterator> resultParts = new LinkedHashMap<>();
         List<String> queries = new ArrayList<>();
 
         Set<SelectField> additionalSelectItems = new HashSet<>();
@@ -204,7 +217,7 @@ public class Executor {
             selectItemsStr.addAll(holderAdditionalColumns);
 
             if (selectItemsStr.isEmpty()) {
-                resultParts.put(fromItemListEntry.getKey(), CompletableFuture.supplyAsync(Table::new, EXECUTOR));
+                resultParts.put(fromItemListEntry.getKey(), TableIterator.ofTable(new Table()));
                 continue;
             }
 
@@ -255,31 +268,28 @@ public class Executor {
 
             queries.add(query);
 
-            CompletableFuture<Table> result = execute(query);
+            TableIterator result = execute(query);
             resultParts.put(fromItemListEntry.getKey(), result);
         }
 
         System.out.println(queries);
         sqlHolder.addAllAdditionalSelectFields(additionalSelectItems);
 
-        CompletableFuture<Table> from = resultParts.remove(sqlHolder.getFromItem());
+        TableIterator from = resultParts.remove(sqlHolder.getFromItem());
         if (from == null) {
             throw new IllegalStateException("FromItem can not be null");
         }
 
         //TODO можно оптимизировать: не нужно дополнительный раз вставлять whereClause
-        return Joiner.join(
+        TableIterator result = Joiner.join(
                 sqlHolder,
-                from.join(),
-                resultParts.values().stream().collect(Collectors.toList()),
+                from,
+                new ArrayList<>(resultParts.values()),
                 sqlHolder.getJoins(),
                 sqlHolder.getWhereClause()
-        ).thenApplyAsync(
-                table -> {
-                    table.remove(Sets.difference(additionalSelectItems, Sets.newHashSet(sqlHolder.getSelectFields())));
-                    return table;
-                },
-                EXECUTOR);
+        );
+        result.setAfterNext(table -> table.remove(Sets.difference(additionalSelectItems, Sets.newHashSet(sqlHolder.getSelectFields()))));
+        return result;
     }
 
     //TODO не поддерживатся USING
