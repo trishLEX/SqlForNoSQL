@@ -3,20 +3,16 @@ package ru.bmstu.sqlfornosql.executor;
 import ru.bmstu.sqlfornosql.adapters.postgres.PostgresMapper;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.OrderableSelectField;
-import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Table;
 import ru.bmstu.sqlfornosql.model.TableIterator;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import java.sql.*;
 import java.util.Iterator;
-import java.util.List;
 import java.util.stream.Collectors;
 
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 
-@ParametersAreNonnullByDefault
-public class Grouper {
+public class Orderer {
     private static final PostgresMapper MAPPER = new PostgresMapper();
 
     static {
@@ -27,11 +23,7 @@ public class Grouper {
         }
     }
 
-    public static TableIterator groupInDb(
-            SqlHolder holder,
-            Iterator<Table> tables,
-            String supportTableName
-    ) {
+    public static TableIterator orderInDb(SqlHolder holder, Iterator<Table> tables, String supportTableName) {
         try (Connection connection = DriverManager.getConnection(
                 "jdbc:h2:~/sqlForNoSql;AUTO_SERVER=TRUE",
                 "h2",
@@ -41,7 +33,7 @@ public class Grouper {
 
             insertInH2SupportTable(tables, supportTableName, connection);
 
-            ExecutorUtils.H2Iterator rs = group(holder, connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY), supportTableName);
+            ExecutorUtils.H2Iterator rs = order(holder, connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY), supportTableName);
 
             TableIterator result = MAPPER.mapResultSet(rs, holder);
             result.setAfterAll(() -> dropSupportTable(supportTableName));
@@ -51,28 +43,12 @@ public class Grouper {
         }
     }
 
-    private static ExecutorUtils.H2Iterator group(
+    private static ExecutorUtils.H2Iterator order(
             SqlHolder holder,
             Statement statement,
             String supportTableName
     ) {
         String query = createBaseQuery(holder, supportTableName);
-
-        query += " GROUP BY " +
-                holder.getGroupBys().stream()
-                        .map(SelectField::getQuotedFullQualifiedContent)
-                        .map(String::toLowerCase)
-                        .collect(Collectors.joining(", "));
-
-        if (holder.getHavingClause() != null) {
-            List<String> idents = ExecutorUtils.getIdentsFromString(holder.getHavingClause().toString());
-            String havingQuery = " HAVING " + holder.getHavingClause().toString();
-            for (String ident : idents) {
-                havingQuery = havingQuery.replace(ident, "\"" + ident.toLowerCase() + "\"");
-            }
-
-            query += havingQuery;
-        }
 
         if (!holder.getOrderBys().isEmpty()) {
             query += " ORDER BY" +

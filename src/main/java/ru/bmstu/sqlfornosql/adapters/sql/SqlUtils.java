@@ -10,14 +10,13 @@ import net.sf.jsqlparser.expression.operators.relational.InExpression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.*;
 import org.bson.Document;
 import ru.bmstu.sqlfornosql.adapters.mongo.DateFunction;
 import ru.bmstu.sqlfornosql.adapters.mongo.ObjectIdFunction;
 import ru.bmstu.sqlfornosql.adapters.mongo.WhereClauseParser;
-import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
-import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
-import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SqlFunction;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.*;
 
 import java.math.BigInteger;
 import java.util.Collections;
@@ -380,7 +379,7 @@ public class SqlUtils {
                         .withJoins(joins)
                         .withGroupBy(groupBys)
                         .withHaving(havingClause)
-                        .withOrderBy(orderByElements)
+                        .withOrderByElements(orderByElements)
                         .build();
             } else {
                 throw new IllegalArgumentException("Only select statements are supported");
@@ -405,5 +404,17 @@ public class SqlUtils {
         } else {
             return item;
         }
+    }
+
+    public static OrderableSelectField toSelectField(OrderByElement element) {
+        if (element.getExpression() instanceof Column) {
+            if (element.isAscDescPresent()) {
+                return new OrderableSelectField(element.getExpression().toString(), element.isAsc() ? AscDesc.ASC : AscDesc.DESC);
+            } else {
+                return new OrderableSelectField(element.getExpression().toString());
+            }
+        }
+
+        throw new UnsupportedOperationException("Ordering by expression is not supported yet");
     }
 }

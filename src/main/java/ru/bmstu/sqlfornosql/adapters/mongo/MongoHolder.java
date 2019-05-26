@@ -89,7 +89,7 @@ public class MongoHolder {
             mongoHolder.projection = mongoProjection;
         }
 
-        if (sqlHolder.getOrderByElements() != null && !sqlHolder.getOrderByElements().isEmpty()) {
+        if (sqlHolder.getOrderBys() != null && !sqlHolder.getOrderBys().isEmpty()) {
             mongoHolder.sort = MongoUtils.createSortInfoFromOrderByElements(sqlHolder.getOrderByElements(), mongoHolder);
         }
 

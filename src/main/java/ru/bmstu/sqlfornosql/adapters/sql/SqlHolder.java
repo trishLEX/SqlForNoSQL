@@ -7,6 +7,7 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.OrderableSelectField;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 import ru.bmstu.sqlfornosql.model.DatabaseName;
@@ -39,6 +40,7 @@ public class SqlHolder {
 
     @Nullable
     private Expression havingClause;
+    private List<OrderableSelectField> orderBys;
     private List<OrderByElement> orderByElements;
 
     private Map<FromItem, List<SelectItem>> selectItemMap;
@@ -60,6 +62,7 @@ public class SqlHolder {
         //TODO перевести спискок group by на список Column
         groupBys = new ArrayList<>();
         orderByElements = new ArrayList<>();
+        orderBys = new ArrayList<>();
         selectItemMap = new LinkedHashMap<>();
         selectFields = new ArrayList<>();
         additionalSelectFields = new HashSet<>();
@@ -76,7 +79,7 @@ public class SqlHolder {
                 .withSelectItems(selectItems)
                 .withJoins(joins)
                 .withGroupBy(groupBys.stream().map(SelectField::toString).collect(Collectors.toList()))
-                .withOrderBy(orderByElements)
+                .withOrderByElements(orderByElements)
                 .withFromItem(fromItem)
                 .withWhere(whereClause)
                 .withHaving(havingClause);
@@ -176,6 +179,7 @@ public class SqlHolder {
             return this;
         }
 
+        //TODO кажется fromItem может быть разный
         public SqlHolderBuilder withGroupBy(@Nullable List<String> groupBys) {
             if (groupBys != null) {
                 holder.groupBys = groupBys
@@ -199,10 +203,17 @@ public class SqlHolder {
             return this;
         }
 
-        //TODO переделать на SelectField
-        public SqlHolderBuilder withOrderBy(@Nullable List<OrderByElement> orderByElements) {
+        private SqlHolderBuilder withOrderBy(@Nullable List<OrderableSelectField> orderByElements) {
+            if (orderByElements != null) {
+                holder.orderBys = orderByElements;
+            }
+            return this;
+        }
+
+        public SqlHolderBuilder withOrderByElements(@Nullable List<OrderByElement> orderByElements) {
             if (orderByElements != null) {
                 holder.orderByElements = orderByElements;
+                return withOrderBy(orderByElements.stream().map(SqlUtils::toSelectField).collect(Collectors.toList()));
             }
             return this;
         }
@@ -437,6 +448,10 @@ public class SqlHolder {
         return havingClause;
     }
 
+    public List<OrderableSelectField> getOrderBys() {
+        return orderBys;
+    }
+
     public List<OrderByElement> getOrderByElements() {
         return orderByElements;
     }
@@ -630,12 +645,11 @@ public class SqlHolder {
     }
 
     private void addOrderByToString(StringBuilder sb) {
-        if (!orderByElements.isEmpty()) {
-            sb.append(" ORDER BY ");
-            sb.append(orderByElements
-                    .stream()
-                    .map(OrderByElement::toString)
-                    .collect(Collectors.joining(", "))
+        if (!orderBys.isEmpty()) {
+            sb.append(" ORDER BY ")
+                    .append(orderBys.stream()
+                            .map(OrderableSelectField::toString)
+                            .collect(Collectors.joining(", "))
             );
         }
     }
@@ -643,18 +657,21 @@ public class SqlHolder {
     //TODO пофиксить как group by, когда будет состоять из SelectField
     private void addOrderByToQuery(StringBuilder sb) {
         if (!orderByElements.isEmpty()) {
-            sb.append(" ORDER BY ");
-            sb.append(orderByElements
-                    .stream()
-                    .map(OrderByElement::toString)
-                    .collect(Collectors.joining(", "))
+            sb.append(" ORDER BY ")
+                    .append(orderBys.stream()
+                            .map(OrderableSelectField::toString)
+                            .collect(Collectors.joining(", "))
             );
         }
     }
 
     private void addGroupByToString(StringBuilder sb) {
         if (!groupBys.isEmpty()) {
-            sb.append(" GROUP BY ").append(groupBys.stream().map(SelectField::getQualifiedContent).collect(Collectors.joining(", ")));
+            sb.append(" GROUP BY ")
+                    .append(groupBys.stream()
+                            .map(SelectField::getQualifiedContent)
+                            .collect(Collectors.joining(", "))
+                    );
 
             if (havingClause != null) {
                 sb.append(" HAVING ").append(havingClause);
@@ -664,7 +681,11 @@ public class SqlHolder {
 
     private void addGroupByToQuery(StringBuilder sb) {
         if (!groupBys.isEmpty()) {
-            sb.append(" GROUP BY ").append(groupBys.stream().map(SelectField::getNativeInDbName).collect(Collectors.joining(", ")));
+            sb.append(" GROUP BY ")
+                    .append(groupBys.stream()
+                            .map(SelectField::getNativeInDbName)
+                            .collect(Collectors.joining(", "))
+                    );
 
             if (havingClause != null) {
                 sb.append(" HAVING ").append(havingClause);

@@ -7,8 +7,6 @@ import ru.bmstu.sqlfornosql.model.Table;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class AbstractClient implements AutoCloseable {
-    protected static final int BATCH_SIZE = 100;
-
     public abstract Table executeQuery(SqlHolder holder);
 
     public CompletableFuture<Table> executeQueryLazy(SqlHolder holder) {

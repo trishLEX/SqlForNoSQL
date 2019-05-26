@@ -158,11 +158,31 @@ public class Table {
 
     @Override
     public String toString() {
-        StringBuilder res = new StringBuilder("ROWS:\n");
-        for (Row row : rows) {
-            res.append(row.toString()).append("\n");
+        if (!rows.isEmpty()) {
+            StringBuilder res = new StringBuilder("ROWS:\n");
+            for (Row row : rows) {
+                res.append(row.toString()).append("\n");
+            }
+            res.append("\n");
+            return res.toString();
+
+        } else {
+            return "";
         }
-        res.append("\n");
-        return res.toString();
+    }
+
+    @Deprecated //Only for testing
+    public void add(Table table) {
+        columns.addAll(table.columns);
+        typeMap.putAll(table.typeMap);
+        for (Row row : table.rows) {
+            Row newRow = new Row(this);
+            for (SelectField column : row.getColumns()) {
+                newRow.add(column, row.getObject(column));
+            }
+            rows.add(newRow);
+        }
+        typeMap.putAll(table.typeMap);
+        columns.addAll(table.columns);
     }
 }

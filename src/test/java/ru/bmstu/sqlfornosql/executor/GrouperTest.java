@@ -5,6 +5,7 @@ import org.junit.Test;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 import ru.bmstu.sqlfornosql.model.Table;
+import ru.bmstu.sqlfornosql.model.TableIterator;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -33,7 +34,10 @@ public class GrouperTest {
         Executor executor = new Executor();
         Iterator<Table> table = executor.execute("SELECT postgres.postgres.test.test.dateField, postgres.postgres.test.test.intField FROM postgres.postgres.test.test");
         SqlHolder holder = SqlUtils.fillSqlMeta(query);
-        System.out.println(Grouper.groupInDb(holder, table, "support_table1").next());
+        TableIterator result = Grouper.groupInDb(holder, table, "support_table1");
+        while (result.hasNext()) {
+            System.out.println(result.next());
+        }
     }
 
     //TODO HAVING не работает (нужны alias'ы)
@@ -43,6 +47,9 @@ public class GrouperTest {
         Executor executor = new Executor();
         Iterator<Table> table = executor.execute("SELECT postgres.postgres.test.test.dateField, postgres.postgres.test.test.intField FROM postgres.postgres.test.test");
         SqlHolder holder = SqlUtils.fillSqlMeta(query);
-        System.out.println(Grouper.groupInDb(holder, table, "support_table2").next());
+        TableIterator result = Grouper.groupInDb(holder, table, "support_table2");
+        while (result.hasNext()) {
+            System.out.println(result.next());
+        }
     }
 }

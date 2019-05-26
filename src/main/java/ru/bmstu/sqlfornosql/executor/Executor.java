@@ -8,13 +8,10 @@ import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
 import ru.bmstu.sqlfornosql.adapters.AbstractClient;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
-import ru.bmstu.sqlfornosql.adapters.mongo.MongoUtils;
 import ru.bmstu.sqlfornosql.adapters.postgres.PostgresClient;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
-import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
-import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
-import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.*;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.Table;
 import ru.bmstu.sqlfornosql.model.TableIterator;
@@ -52,7 +49,9 @@ public class Executor {
             "MIN",
             "MAX",
             "AVG",
-            "COUNT"
+            "COUNT",
+            "ASC",
+            "DESC"
     );
 
     public TableIterator execute(String sql) {
@@ -99,11 +98,11 @@ public class Executor {
 
             SqlHolder subSelectHolder = SqlUtils.fillSqlMeta(subSelectStr);
             if (!sqlHolder.getGroupBys().isEmpty()) {
-                Iterator<Table> iterator = execute(subSelectStr);
-                return Grouper.groupInDb(sqlHolder, iterator, "support_table_" + System.currentTimeMillis());
+                Iterator<Table> iterator = execute(subSelectStr).iterator();
+                return Grouper.groupInDb(sqlHolder, iterator, ExecutorUtils.createSupportTableName());
             } else {
-                if (sqlHolder.getOrderByElements() != null) {
-                    subSelectHolder.getOrderByElements().addAll(sqlHolder.getOrderByElements());
+                if (sqlHolder.getOrderBys() != null) {
+                    subSelectHolder.getOrderBys().addAll(sqlHolder.getOrderBys());
                 }
             }
 
@@ -162,19 +161,16 @@ public class Executor {
 
                     if (!sqlHolder.getGroupBys().isEmpty()) {
                         //TODO REMOVE THIS
-                        result = Grouper.group(sqlHolder, List.of(result).iterator(), "support_table_" + System.currentTimeMillis()).next();
+                        result = Grouper.groupInDb(sqlHolder, List.of(result).iterator(), ExecutorUtils.createSupportTableName()).next();
                         throw new IllegalStateException("It's not supposed to be here");
                     }
 
-                    if (!sqlHolder.getOrderByElements().isEmpty()) {
+                    if (!sqlHolder.getOrderBys().isEmpty()) {
                         LinkedHashMap<SelectField, Boolean> orderByMap = new LinkedHashMap<>();
-                        for (OrderByElement element : sqlHolder.getOrderByElements()) {
-                            //TODO order by можно выполянть по expression'у
+                        for (OrderableSelectField element : sqlHolder.getOrderBys()) {
                             orderByMap.put(
-                                    sqlHolder.getFieldByNonQualifiedName(
-                                            MongoUtils.getNonQualifiedName(element.toString())
-                                    ),
-                                    element.isAsc());
+                                    sqlHolder.getFieldByNonQualifiedName(element.getNonQualifiedName()),
+                                    element.getAscDesc() == AscDesc.ASC);
                         }
                         result.sort(orderByMap);
                     }
@@ -255,10 +251,10 @@ public class Executor {
                 }
             }
 
-            if (!sqlHolder.getOrderByElements().isEmpty()) {
+            if (!sqlHolder.getOrderBys().isEmpty()) {
                 List<String> orderBys = new ArrayList<>();
-                for (OrderByElement orderByItem : sqlHolder.getOrderByElements()) {
-                    fillIdents(selectItemsStr, orderBys, orderByItem.toString());
+                for (OrderableSelectField orderByItem : sqlHolder.getOrderBys()) {
+                    fillIdents(selectItemsStr, orderBys, orderByItem.getUserInputName());
                 }
 
                 if (!orderBys.isEmpty()) {
@@ -280,19 +276,24 @@ public class Executor {
             throw new IllegalStateException("FromItem can not be null");
         }
 
-        //TODO можно оптимизировать: не нужно дополнительный раз вставлять whereClause
         TableIterator result = Joiner.join(
                 sqlHolder,
                 from,
                 new ArrayList<>(resultParts.values()),
-                sqlHolder.getJoins(),
-                sqlHolder.getWhereClause()
+                Sets.difference(additionalSelectItems, Sets.newHashSet(sqlHolder.getSelectFields()))
         );
-        result.setAfterNext(table -> table.remove(Sets.difference(additionalSelectItems, Sets.newHashSet(sqlHolder.getSelectFields()))));
+
+        if (!sqlHolder.getOrderBys().isEmpty()) {
+            result = Orderer.orderInDb(
+                    sqlHolder,
+                    result,
+                    ExecutorUtils.createSupportTableName()
+            );
+        }
+
         return result;
     }
 
-    //TODO не поддерживатся USING
     private List<SelectField> getAdditionalSelectItemsStrings(FromItem from, List<Join> joins, Set<SelectField> existingSelectItems) {
         List<SelectField> selectFields = new ArrayList<>();
         for (Join join : joins) {

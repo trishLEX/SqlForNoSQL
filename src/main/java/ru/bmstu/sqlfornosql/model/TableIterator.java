@@ -6,16 +6,15 @@ import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import javax.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.function.Consumer;
 
 public class TableIterator implements Iterator<Table>, Iterable<Table> {
-    public static final long BATCH_SIZE = 100;
+    public static final long BATCH_SIZE = 1;
     private long lastBatchSize;
     private AbstractClient client;
     private SqlHolder holder;
     private int offsetIndex;
     private Table lastTable;
-    Consumer<Table> afterNext;
+    private Runnable afterAll;
 
     public static TableIterator ofTable(Table table) {
         return new TableIterator() {
@@ -31,9 +30,6 @@ public class TableIterator implements Iterator<Table>, Iterable<Table> {
             public Table next() {
                 if (hasNext()) {
                     wasIterated = true;
-                    if (afterNext != null) {
-                        afterNext.accept(table);
-                    }
                     return table;
                 } else {
                     throw new NoSuchElementException();
@@ -61,8 +57,8 @@ public class TableIterator implements Iterator<Table>, Iterable<Table> {
         this.offsetIndex = 0;
     }
 
-    public void setAfterNext(Consumer<Table> afterNext) {
-        this.afterNext = afterNext;
+    public void setAfterAll(Runnable afterAll) {
+        this.afterAll = afterAll;
     }
 
     @Override
@@ -84,19 +80,19 @@ public class TableIterator implements Iterator<Table>, Iterable<Table> {
                 lastTable.clear();
                 holder.setOffset(BATCH_SIZE * offsetIndex);
                 holder.setLimit(BATCH_SIZE);
-                offsetIndex++;
             }
+            offsetIndex++;
 
             holder.setLimit(BATCH_SIZE);
             lastTable = client.executeQuery(holder);
-            if (afterNext != null) {
-                afterNext.accept(lastTable);
-            }
             lastBatchSize = lastTable.size();
             holder.setLimit(-1);
             holder.setOffset(-1);
 
             if (!hasNext()) {
+                if (afterAll != null) {
+                    afterAll.run();
+                }
                 client.close();
             }
             return lastTable;
