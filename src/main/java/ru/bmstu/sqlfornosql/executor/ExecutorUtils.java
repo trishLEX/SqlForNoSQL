@@ -4,7 +4,9 @@ import net.sf.jsqlparser.expression.Expression;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
@@ -186,7 +188,21 @@ public class ExecutorUtils {
     static String createBaseQuery(SqlHolder holder, String supportTableName) {
         String query = "SELECT " +
                 holder.getSelectFields().stream()
-                        .map(SelectField::getQuotedFullQualifiedContent)
+                        .map(selectField -> {
+                            if (selectField instanceof Column
+                                    && ((Column) selectField).getAlias() != null)
+                            {
+                                return selectField.getQuotedFullQualifiedContent() +
+                                        " AS \"" + ((Column) selectField).getAlias() + "\"";
+                            } else if (selectField instanceof SelectFieldExpression
+                                    && ((SelectFieldExpression) selectField).getAlias() != null)
+                            {
+                                return selectField.getQuotedFullQualifiedContent() +
+                                        " AS \"" + ((SelectFieldExpression) selectField).getAlias() + "\"";
+                            } else {
+                                return selectField.getQuotedFullQualifiedContent();
+                            }
+                        })
                         .map(String::toLowerCase)
                         .collect(Collectors.joining(", ")) +
                 " FROM " + supportTableName;
@@ -245,7 +261,7 @@ public class ExecutorUtils {
         public ResultSet next() {
             String resultQuery;
             if (offsetIndex > 0) {
-                resultQuery = query + " OFFSET " + TableIterator.BATCH_SIZE * offsetIndex + " LIMIT " + TableIterator.BATCH_SIZE;
+                resultQuery = query + " LIMIT " + TableIterator.BATCH_SIZE + " OFFSET " + TableIterator.BATCH_SIZE * offsetIndex;
             } else {
                 resultQuery = query + " LIMIT " + TableIterator.BATCH_SIZE;
             }

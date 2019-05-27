@@ -1,10 +1,14 @@
 package ru.bmstu.sqlfornosql.adapters.sql.selectfield;
 
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Objects;
 
+@ParametersAreNonnullByDefault
 public class SelectFieldExpression extends SelectField {
     private Column column;
     private SqlFunction function;
+    @Nullable
     private String alias;
 
     public SelectFieldExpression(SqlFunction function, String userInput) {
@@ -26,6 +30,7 @@ public class SelectFieldExpression extends SelectField {
         return function;
     }
 
+    @Nullable
     public String getAlias() {
         return alias;
     }

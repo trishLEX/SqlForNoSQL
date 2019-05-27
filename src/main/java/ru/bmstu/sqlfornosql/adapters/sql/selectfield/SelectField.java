@@ -42,7 +42,6 @@ public abstract class SelectField {
 
     protected void updateQualifiedName() {
         if (getSource() instanceof SubSelect) {
-            //TODO проверить обязателен ли subselect'у alias
             if (getSource().getAlias() == null){
                 throw new IllegalStateException("SubSelects must have alias");
             } else {

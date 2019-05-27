@@ -1,6 +1,11 @@
 package ru.bmstu.sqlfornosql.adapters.sql.selectfield;
 
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
+
+@ParametersAreNonnullByDefault
 public class Column extends SelectField {
+    @Nullable
     private String alias;
 
     public Column(String userInput) {
@@ -42,6 +47,7 @@ public class Column extends SelectField {
         return '"' + fullQualifiedName + '"';
     }
 
+    @Nullable
     public String getAlias() {
         return alias;
     }

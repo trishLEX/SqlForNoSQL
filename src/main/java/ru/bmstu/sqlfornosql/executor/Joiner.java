@@ -107,7 +107,6 @@ public class Joiner {
         };
     }
 
-    //TODO join работает сейчас только по полям, которые есть в selectItems!!!
     private static Table join(SqlHolder holder, Table leftTable, Table rightTable, Expression onExpression, Collection<SelectField> additionalFields) {
         Table result = new Table();
         HashMap<String, Integer> colMapping = getIdentMapping(onExpression.toString());

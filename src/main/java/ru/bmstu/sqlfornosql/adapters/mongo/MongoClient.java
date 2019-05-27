@@ -76,7 +76,6 @@ public class MongoClient extends AbstractClient {
 
             return mapper.mapGroupBy(collection.aggregate(documents, BsonDocument.class), query);
         } else {
-            //TODO
             logger.debug("EXECUTING FIND QUERY: " + query);
             FindIterable<BsonDocument> findIterable = collection.find(query.getQuery(), BsonDocument.class).projection(query.getProjection());
             if (query.getSort() != null && query.getSort().size() > 0) {

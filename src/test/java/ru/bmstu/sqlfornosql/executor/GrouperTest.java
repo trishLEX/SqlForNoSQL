@@ -32,24 +32,28 @@ public class GrouperTest {
     public void testGroupBy() {
         String query = "SELECT max(postgres.postgres.test.test.dateField) FROM postgres.postgres.test.test GROUP BY postgres.postgres.test.test.intField";
         Executor executor = new Executor();
-        Iterator<Table> table = executor.execute("SELECT postgres.postgres.test.test.dateField, postgres.postgres.test.test.intField FROM postgres.postgres.test.test");
+        TableIterator table = executor.execute("SELECT postgres.postgres.test.test.dateField, postgres.postgres.test.test.intField FROM postgres.postgres.test.test");
         SqlHolder holder = SqlUtils.fillSqlMeta(query);
-        TableIterator result = Grouper.groupInDb(holder, table, "support_table1");
-        while (result.hasNext()) {
-            System.out.println(result.next());
+        table = Grouper.groupInDb(holder, table, "support_table1");
+        Table result = new Table();
+        while (table.hasNext()) {
+            result.add(table.next());
         }
+        System.out.println(result);
     }
 
     //TODO HAVING не работает (нужны alias'ы)
     @Test
     public void testGroupByHaving() {
-        String query = "SELECT max(postgres.postgres.test.test.dateField) FROM postgres.postgres.test.test GROUP BY postgres.postgres.test.test.intField";
+        String query = "SELECT max(postgres.postgres.test.test.dateField) AS t FROM postgres.postgres.test.test GROUP BY postgres.postgres.test.test.intField HAVING t IS NULL";
         Executor executor = new Executor();
         Iterator<Table> table = executor.execute("SELECT postgres.postgres.test.test.dateField, postgres.postgres.test.test.intField FROM postgres.postgres.test.test");
         SqlHolder holder = SqlUtils.fillSqlMeta(query);
-        TableIterator result = Grouper.groupInDb(holder, table, "support_table2");
-        while (result.hasNext()) {
-            System.out.println(result.next());
+        table = Grouper.groupInDb(holder, table, "support_table2");
+        Table result = new Table();
+        while (table.hasNext()) {
+            result.add(table.next());
         }
+        System.out.println(result);
     }
 }

@@ -59,7 +59,6 @@ public class SqlHolder {
         offset = -1;
         selectItems = new ArrayList<>();
         joins = new ArrayList<>();
-        //TODO перевести спискок group by на список Column
         groupBys = new ArrayList<>();
         orderByElements = new ArrayList<>();
         orderBys = new ArrayList<>();
@@ -292,7 +291,7 @@ public class SqlHolder {
                                     return 0;
                                 }
                             })
-                            .reduce(0, (x, y) -> x + y);
+                            .reduce(0, Integer::sum);
                     //TODO не подходит способ (пример: test.test и t -- test заканчиватеся на t, но это 2 разные таблицы)
 //                    if (count > 1) {
 //                        throw new IllegalArgumentException("Column '" + column + "' clashes");
@@ -654,7 +653,6 @@ public class SqlHolder {
         }
     }
 
-    //TODO пофиксить как group by, когда будет состоять из SelectField
     private void addOrderByToQuery(StringBuilder sb) {
         if (!orderByElements.isEmpty()) {
             sb.append(" ORDER BY ")

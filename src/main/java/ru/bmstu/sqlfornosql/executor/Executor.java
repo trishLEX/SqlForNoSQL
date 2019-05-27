@@ -28,7 +28,7 @@ import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 
 public class Executor {
     public static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-    //TODO вводится правило, что работаем только с lowerCase'ми
+    //вводится правило, что работаем только с lowerCase'ми
     static final Pattern IDENT_REGEXP = Pattern.compile("([a-zA-Z]+[0-9a-zA-Z.]*)");
 
     static final Set<String> FORBIDDEN_STRINGS = ImmutableSet.of(
@@ -72,7 +72,6 @@ public class Executor {
      * @param sqlHolder - холдер, содержащий запрос
      * @return таблицу с результатом выполнения запроса
      */
-    //TODO здесь fromItem может быть подзапросом - это нужно обработать
     private TableIterator simpleSelect(SqlHolder sqlHolder) {
         sqlHolder.fillColumnMap();
         if (sqlHolder.getFromItem() instanceof net.sf.jsqlparser.schema.Table) {

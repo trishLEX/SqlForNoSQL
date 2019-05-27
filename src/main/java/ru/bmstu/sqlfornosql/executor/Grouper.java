@@ -13,7 +13,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
+import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.createBaseQuery;
+import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.insertInH2SupportTable;
 
 @ParametersAreNonnullByDefault
 public class Grouper {
@@ -44,7 +45,7 @@ public class Grouper {
             ExecutorUtils.H2Iterator rs = group(holder, connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY), supportTableName);
 
             TableIterator result = MAPPER.mapResultSet(rs, holder);
-            result.setAfterAll(() -> dropSupportTable(supportTableName));
+            //result.setAfterAll(() -> dropSupportTable(supportTableName));
             return result;
         } catch (SQLException e) {
             throw new IllegalStateException("Can't perform h2 query", e);

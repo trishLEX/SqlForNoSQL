@@ -125,6 +125,7 @@ public class SqlUtils {
 
     private static SelectField getCountExpression(SelectExpressionItem item, String fieldStr) {
         if (item.getAlias() != null) {
+            fieldStr = item.getExpression().toString();
             return new SelectFieldExpression(
                     SqlFunction.COUNT,
                     fieldStr.substring(6, fieldStr.length() - 1),
@@ -140,6 +141,7 @@ public class SqlUtils {
 
     private static SelectField getMaxExpression(SelectExpressionItem item, String fieldStr) {
         if (item.getAlias() != null) {
+            fieldStr = item.getExpression().toString();
             return new SelectFieldExpression(
                     SqlFunction.MAX,
                     fieldStr.substring(4, fieldStr.length() - 1),
@@ -155,6 +157,7 @@ public class SqlUtils {
 
     private static SelectField getMinExpression(SelectExpressionItem item, String fieldStr) {
         if (item.getAlias() != null) {
+            fieldStr = item.getExpression().toString();
             return new SelectFieldExpression(
                     SqlFunction.MIN,
                     fieldStr.substring(4, fieldStr.length() - 1),
@@ -170,6 +173,7 @@ public class SqlUtils {
 
     private static SelectField getAvgExpression(SelectExpressionItem item, String fieldStr) {
         if (item.getAlias() != null) {
+            fieldStr = item.getExpression().toString();
             return new SelectFieldExpression(
                     SqlFunction.AVG,
                     fieldStr.substring(4, fieldStr.length() - 1),
@@ -185,6 +189,7 @@ public class SqlUtils {
 
     private static SelectField getSumExpression(SelectExpressionItem item, String fieldStr) {
         if (item.getAlias() != null) {
+            fieldStr = item.getExpression().toString();
             return new SelectFieldExpression(
                     SqlFunction.SUM,
                     fieldStr.substring(4, fieldStr.length() - 1),
