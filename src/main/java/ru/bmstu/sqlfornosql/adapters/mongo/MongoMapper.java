@@ -20,6 +20,7 @@ import java.util.Map;
 import static ru.bmstu.sqlfornosql.adapters.mongo.MongoHolder.MONGO_ID;
 
 public class MongoMapper {
+    //TODO логика с названием колонок, в монге и вообще класс SelectField
     public Table mapGroupBy(MongoIterable<BsonDocument> mongoResult, MongoHolder query) {
         Table table = new Table();
         for (BsonDocument element : mongoResult) {

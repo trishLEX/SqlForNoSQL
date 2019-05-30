@@ -360,6 +360,7 @@ public class SqlHolder {
         }
     }
 
+    //TODO alias не поддерживаются
     public void updateSelectItems() {
         if (!isSelectAll) {
 //            selectItemsStrings.forEach(col -> {
@@ -369,10 +370,10 @@ public class SqlHolder {
 //                selectItemsStrings.set(selectItemsStrings.indexOf(col), selectItem);
 //            });
             for (SelectField selectField : selectFields) {
-                if (selectField instanceof Column) {
+                if (selectField instanceof Column && ((Column) selectField).getAlias() == null) {
                     Column column = (Column) selectField;
                     column.setAlias(column.getNonQualifiedContent());
-                } else if (selectField instanceof SelectFieldExpression) {
+                } else if (selectField instanceof SelectFieldExpression && ((SelectFieldExpression) selectField).getAlias() == null) {
                     SelectFieldExpression expression = (SelectFieldExpression) selectField;
                     expression.setAlias(expression.getNonQualifiedContent());
                 }
@@ -633,7 +634,15 @@ public class SqlHolder {
         addDistinct(sb);
 
         Set<String> selectItems = selectFields.stream()
-                .map(SelectField::getNativeInDbName)
+                .map(field -> {
+                    if (field instanceof Column && ((Column) field).getAlias() != null) {
+                        return field.getNativeInDbName() + " AS \"" + ((Column) field).getAlias() + "\"";
+                    } else if (field instanceof SelectFieldExpression && ((SelectFieldExpression) field).getAlias() != null) {
+                        return field.getNativeInDbName() + " AS \"" + ((SelectFieldExpression) field).getAlias() + "\"";
+                    } else {
+                        return field.getNativeInDbName();
+                    }
+                })
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         selectItems.addAll(additionalSelectFields.stream()

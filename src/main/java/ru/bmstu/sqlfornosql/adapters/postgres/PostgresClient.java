@@ -41,7 +41,7 @@ public class PostgresClient extends AbstractClient {
             return new PostgresMapper().mapResultSet(resultSet, query);
 
         } catch (SQLException e) {
-            throw new IllegalStateException("Can't execute query", e);
+            throw new IllegalStateException("Can't execute query: " + query.getSqlQuery(), e);
         }
     }
 

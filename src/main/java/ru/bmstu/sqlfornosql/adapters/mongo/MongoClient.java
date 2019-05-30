@@ -46,7 +46,6 @@ public class MongoClient extends AbstractClient {
         if (query.isDistinct()) {
             logger.debug("EXECUTING DISTINCT QUERY: " + query);
             throw new UnsupportedOperationException();
-//            return collection.distinct(getDistinctFieldName(query), query.getQuery(), clazz);
         } else if (query.isCountAll()) {
             logger.debug("EXECUTING COUNT ALL QUERY: " + query);
             return mapper.mapCountAll(collection.countDocuments(query.getQuery()), query);
@@ -56,11 +55,11 @@ public class MongoClient extends AbstractClient {
             logger.debug("EXECUTING GROUP BY QUERY: " + query);
             List<Document> documents = new ArrayList<>();
 
+            documents.add(new Document("$group", query.getProjection()));
+
             if (query.getQuery() != null && query.getQuery().size() > 0) {
                 documents.add(new Document("$match", query.getQuery()));
             }
-
-            documents.add(new Document("$group", query.getProjection()));
 
             if (query.getSort() != null && query.getSort().size() > 0) {
                 documents.add(new Document("$sort", query.getSort()));

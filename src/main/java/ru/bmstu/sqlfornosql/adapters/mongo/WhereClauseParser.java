@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static ru.bmstu.sqlfornosql.adapters.mongo.MongoUtils.getNonQualifiedName;
+import static ru.bmstu.sqlfornosql.adapters.mongo.MongoUtils.makeMongoColName;
 
 public class WhereClauseParser {
     private WhereClauseParser() {
@@ -77,14 +78,14 @@ public class WhereClauseParser {
                 Expression leftExpression = ((GreaterThan) incomingExpression).getLeftExpression();
                 Expression rightExpression = ((GreaterThan) incomingExpression).getRightExpression();
 
-                String leftExpressionStr = getNonQualifiedName(leftExpression.toString());
+                String leftExpressionStr = makeMongoColName(leftExpression.toString());
 
                 query.put(leftExpressionStr, new Document("$gt", parseExpression(new Document(), rightExpression, leftExpression)));
             } else if (incomingExpression instanceof MinorThan) {
                 Expression leftExpression = ((MinorThan) incomingExpression).getLeftExpression();
                 Expression rightExpression = ((MinorThan) incomingExpression).getRightExpression();
 
-                String leftExpressionStr = getNonQualifiedName(leftExpression.toString());
+                String leftExpressionStr = makeMongoColName(leftExpression.toString());
 
                 query.put(leftExpressionStr ,new Document("$lt", parseExpression(new Document(), rightExpression, leftExpression)));
             } else if (incomingExpression instanceof GreaterThanEquals) {

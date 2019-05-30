@@ -121,6 +121,9 @@ public class PostgresMapper {
 
     private Object getPostgresValue(ResultSet resultSet, int column, RowType type) {
         try {
+            if (resultSet.getObject(column) == null) {
+                return null;
+            }
             switch (type) {
                 case INT:
                     return resultSet.getInt(column);

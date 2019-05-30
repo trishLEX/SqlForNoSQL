@@ -75,7 +75,7 @@ public class MongoConverterTest {
     @Test
     public void simpleSelectGroupByHaving() {
         MongoClient client = new MongoClient("test", "test");
-        System.out.println(client.executeQuery("SELECT sum(test.intField) FROM mongodb.test.test GROUP BY test.intField HAVING test.intField < 500"));
+        System.out.println(client.executeQuery("SELECT sum(test.intField) FROM mongodb.test.test GROUP BY test.intField HAVING sum(test.intField) > 500"));
     }
 
     @Test
