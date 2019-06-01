@@ -6,6 +6,8 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.statement.select.*;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import ru.bmstu.sqlfornosql.adapters.AbstractClient;
 import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
 import ru.bmstu.sqlfornosql.adapters.postgres.PostgresClient;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 
+@Component
 public class Executor {
     public static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     //вводится правило, что работаем только с lowerCase'ми
@@ -54,6 +57,21 @@ public class Executor {
             "DESC"
     );
 
+    private ExecutorConfig config;
+
+    @Autowired
+    private Orderer orderer;
+
+    @Autowired
+    private Joiner joiner;
+
+    @Autowired
+    private Grouper grouper;
+
+    public Executor(ExecutorConfig config) {
+        this.config = config;
+    }
+
     public TableIterator execute(String sql) {
         SqlHolder sqlHolder = SqlUtils.fillSqlMeta(sql);
         return execute(sqlHolder);
@@ -77,11 +95,17 @@ public class Executor {
         if (sqlHolder.getFromItem() instanceof net.sf.jsqlparser.schema.Table) {
             switch (sqlHolder.getDatabase().getDbType()) {
                 case POSTGRES: {
-                    AbstractClient client = new PostgresClient("localhost", 5432, "postgres", "0212", "postgres");
+                    AbstractClient client = new PostgresClient(
+                            config.getPostgresHost(),
+                            config.getPostgresPort(),
+                            config.getPostgresUser(),
+                            config.getPostgresPassword(),
+                            config.getPostgresDatabase()
+                    );
                     return new TableIterator(client, sqlHolder);
                 }
                 case MONGODB: {
-                    MongoClient mongoClient = new MongoClient(sqlHolder.getDatabase().getDatabaseName(), sqlHolder.getDatabase().getTable());
+                    AbstractClient mongoClient = new MongoClient(config.getMongodbDatabase(), config.getMongodbCollection());
                     return new TableIterator(mongoClient, sqlHolder);
                 }
                 default:
@@ -98,7 +122,7 @@ public class Executor {
             SqlHolder subSelectHolder = SqlUtils.fillSqlMeta(subSelectStr);
             if (!sqlHolder.getGroupBys().isEmpty()) {
                 Iterator<Table> iterator = execute(subSelectStr).iterator();
-                return Grouper.groupInDb(sqlHolder, iterator, ExecutorUtils.createSupportTableName());
+                return grouper.groupInDb(sqlHolder, iterator, ExecutorUtils.createSupportTableName());
             } else {
                 if (sqlHolder.getOrderBys() != null) {
                     subSelectHolder.getOrderBys().addAll(sqlHolder.getOrderBys());
@@ -160,7 +184,7 @@ public class Executor {
 
                     if (!sqlHolder.getGroupBys().isEmpty()) {
                         //TODO REMOVE THIS
-                        result = Grouper.groupInDb(sqlHolder, List.of(result).iterator(), ExecutorUtils.createSupportTableName()).next();
+                        result = grouper.groupInDb(sqlHolder, List.of(result).iterator(), ExecutorUtils.createSupportTableName()).next();
                         throw new IllegalStateException("It's not supposed to be here");
                     }
 
@@ -275,7 +299,7 @@ public class Executor {
             throw new IllegalStateException("FromItem can not be null");
         }
 
-        TableIterator result = Joiner.join(
+        TableIterator result = joiner.join(
                 sqlHolder,
                 from,
                 new ArrayList<>(resultParts.values()),
@@ -283,7 +307,7 @@ public class Executor {
         );
 
         if (!sqlHolder.getOrderBys().isEmpty()) {
-            result = Orderer.orderInDb(
+            result = orderer.orderInDb(
                     sqlHolder,
                     result,
                     ExecutorUtils.createSupportTableName()

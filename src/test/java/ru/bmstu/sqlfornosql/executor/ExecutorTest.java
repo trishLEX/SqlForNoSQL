@@ -1,20 +1,22 @@
 package ru.bmstu.sqlfornosql.executor;
 
-import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import ru.bmstu.sqlfornosql.FunctionalTest;
 import ru.bmstu.sqlfornosql.model.Table;
 
 import java.util.Iterator;
 import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 
-public class ExecutorTest {
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes = {FunctionalTest.class})
+public class ExecutorTest extends FunctionalTest {
+    @Autowired
     private Executor executor;
-
-    @Before
-    public void before() {
-        this.executor = new Executor();
-    }
 
     @Test
     public void testIdentMatcher() {

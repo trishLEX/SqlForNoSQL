@@ -1,5 +1,6 @@
 package ru.bmstu.sqlfornosql.executor;
 
+import org.springframework.stereotype.Component;
 import ru.bmstu.sqlfornosql.adapters.postgres.PostgresMapper;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.OrderableSelectField;
@@ -17,8 +18,19 @@ import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.createBaseQuery;
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.insertInH2SupportTable;
 
 @ParametersAreNonnullByDefault
+@Component
 public class Grouper {
     private static final PostgresMapper MAPPER = new PostgresMapper();
+
+    private final String h2Database;
+    private final String h2User;
+    private final String h2Password;
+
+    public Grouper(ExecutorConfig config) {
+        this.h2Database = config.getH2Database();
+        this.h2User = config.getH2User();
+        this.h2Password = config.getH2Password();
+    }
 
     static {
         try {
@@ -28,15 +40,15 @@ public class Grouper {
         }
     }
 
-    public static TableIterator groupInDb(
+    public TableIterator groupInDb(
             SqlHolder holder,
             Iterator<Table> tables,
             String supportTableName
     ) {
         try (Connection connection = DriverManager.getConnection(
-                "jdbc:h2:~/sqlForNoSql;AUTO_SERVER=TRUE",
-                "h2",
-                "")
+                String.format("jdbc:h2:~/%s;AUTO_SERVER=TRUE", h2Database),
+                h2User,
+                h2Password)
         ) {
             connection.setAutoCommit(false);
 
@@ -52,7 +64,7 @@ public class Grouper {
         }
     }
 
-    private static ExecutorUtils.H2Iterator group(
+    private ExecutorUtils.H2Iterator group(
             SqlHolder holder,
             Statement statement,
             String supportTableName

@@ -4,6 +4,7 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.statement.select.Join;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
+import org.springframework.stereotype.Component;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Row;
@@ -19,8 +20,9 @@ import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.getIdentMapping;
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.prepareSqlJEP;
 
 @ParametersAreNonnullByDefault
+@Component
 public class Joiner {
-    public static TableIterator join(SqlHolder holder, TableIterator from, List<TableIterator> joinTables, Collection<SelectField> additionalFields) {
+    public TableIterator join(SqlHolder holder, TableIterator from, List<TableIterator> joinTables, Collection<SelectField> additionalFields) {
         return new TableIterator() {
             private Iterator<Table> leftTableIterator = from.iterator();
             private int joinsSize = holder.getJoins().size();
@@ -107,7 +109,7 @@ public class Joiner {
         };
     }
 
-    private static Table join(SqlHolder holder, Table leftTable, Table rightTable, Expression onExpression, Collection<SelectField> additionalFields) {
+    private Table join(SqlHolder holder, Table leftTable, Table rightTable, Expression onExpression, Collection<SelectField> additionalFields) {
         Table result = new Table();
         HashMap<String, Integer> colMapping = getIdentMapping(onExpression.toString());
         RowJEP sqljep = prepareSqlJEP(onExpression, colMapping);
@@ -134,7 +136,7 @@ public class Joiner {
         return result;
     }
 
-    private static Table join(SqlHolder holder, Table leftTable, Table rightTable, Collection<SelectField> additionalFields) {
+    private Table join(SqlHolder holder, Table leftTable, Table rightTable, Collection<SelectField> additionalFields) {
         Table result = new Table();
 
         for (Row leftRow : leftTable.getRows()) {
@@ -146,7 +148,7 @@ public class Joiner {
         return result;
     }
 
-    private static Row joinRows(Table table, Row left, Row right, Table leftTable, Table rightTable) {
+    private Row joinRows(Table table, Row left, Row right, Table leftTable, Table rightTable) {
         Row result = new Row(table);
         for (SelectField leftColumn : left.getColumns()) {
             result.add(leftColumn, left.getObject(leftColumn));
@@ -161,7 +163,7 @@ public class Joiner {
         return result;
     }
 
-    private static Comparable getValue(Row left, Row right, SelectField key) {
+    private Comparable getValue(Row left, Row right, SelectField key) {
         if (!left.contains(key) ^ right.contains(key)) {
             throw new IllegalStateException("Column " + key + " is clashed");
         }
@@ -173,12 +175,12 @@ public class Joiner {
         }
     }
 
-    private static Comparable getValue(Row row, SelectField key) {
+    private Comparable getValue(Row row, SelectField key) {
         return (Comparable) row.getObject(key);
     }
 
     //TODO holder сделать полем Joiner (когда бин будет)
-    private static void addRow(SqlHolder holder, Table table, Row row, Collection<SelectField> additionalFields) {
+    private void addRow(SqlHolder holder, Table table, Row row, Collection<SelectField> additionalFields) {
         Expression where = holder.getWhereClause();
         if (where == null) {
             row.remove(additionalFields);

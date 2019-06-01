@@ -1,18 +1,20 @@
 package ru.bmstu.sqlfornosql.executor;
 
-import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import ru.bmstu.sqlfornosql.FunctionalTest;
 import ru.bmstu.sqlfornosql.model.Table;
 
 import java.util.Iterator;
 
-public class SimplePostgresSelectTest {
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes = {FunctionalTest.class})
+public class SimplePostgresSelectTest extends FunctionalTest {
+    @Autowired
     private Executor executor;
-
-    @Before
-    public void before() {
-        executor = new Executor();
-    }
 
     @Test
     public void simpleSelect() {

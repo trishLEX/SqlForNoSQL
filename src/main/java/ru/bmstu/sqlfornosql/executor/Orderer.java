@@ -1,5 +1,6 @@
 package ru.bmstu.sqlfornosql.executor;
 
+import org.springframework.stereotype.Component;
 import ru.bmstu.sqlfornosql.adapters.postgres.PostgresMapper;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.OrderableSelectField;
@@ -12,8 +13,18 @@ import java.util.stream.Collectors;
 
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 
+@Component
 public class Orderer {
     private static final PostgresMapper MAPPER = new PostgresMapper();
+    private final String h2Database;
+    private final String h2User;
+    private final String h2Password;
+
+    public Orderer(ExecutorConfig config) {
+        this.h2Database = config.getH2Database();
+        this.h2User = config.getH2User();
+        this.h2Password = config.getH2Password();
+    }
 
     static {
         try {
@@ -23,11 +34,11 @@ public class Orderer {
         }
     }
 
-    public static TableIterator orderInDb(SqlHolder holder, Iterator<Table> tables, String supportTableName) {
+    public TableIterator orderInDb(SqlHolder holder, Iterator<Table> tables, String supportTableName) {
         try (Connection connection = DriverManager.getConnection(
-                "jdbc:h2:~/sqlForNoSql;AUTO_SERVER=TRUE",
-                "h2",
-                "")
+                String.format("jdbc:h2:~/%s;AUTO_SERVER=TRUE", h2Database),
+                h2User,
+                h2Password)
         ) {
             connection.setAutoCommit(false);
 
@@ -43,7 +54,7 @@ public class Orderer {
         }
     }
 
-    private static ExecutorUtils.H2Iterator order(
+    private ExecutorUtils.H2Iterator order(
             SqlHolder holder,
             Statement statement,
             String supportTableName

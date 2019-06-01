@@ -3,8 +3,14 @@ package ru.bmstu.sqlfornosql.adapters.mongo;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import ru.bmstu.sqlfornosql.FunctionalTest;
 
-public class MongoConverterTest {
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes = {FunctionalTest.class})
+public class MongoConverterTest extends FunctionalTest {
     private com.mongodb.MongoClient mongoClient;
 
     @Before

@@ -2,6 +2,11 @@ package ru.bmstu.sqlfornosql.executor;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import ru.bmstu.sqlfornosql.FunctionalTest;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlHolder;
 import ru.bmstu.sqlfornosql.adapters.sql.SqlUtils;
 import ru.bmstu.sqlfornosql.model.Table;
@@ -12,7 +17,15 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Iterator;
 
-public class GrouperTest {
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes = {FunctionalTest.class})
+public class GrouperTest extends FunctionalTest {
+    @Autowired
+    private Grouper grouper;
+
+    @Autowired
+    private Executor executor;
+
     @Before
     public void before() {
         try {
@@ -31,10 +44,9 @@ public class GrouperTest {
     @Test
     public void testGroupBy() {
         String query = "SELECT max(postgres.postgres.test.test.dateField) FROM postgres.postgres.test.test GROUP BY postgres.postgres.test.test.intField";
-        Executor executor = new Executor();
         TableIterator table = executor.execute("SELECT postgres.postgres.test.test.dateField, postgres.postgres.test.test.intField FROM postgres.postgres.test.test");
         SqlHolder holder = SqlUtils.fillSqlMeta(query);
-        table = Grouper.groupInDb(holder, table, "support_table1");
+        table = grouper.groupInDb(holder, table, "support_table1");
         Table result = new Table();
         while (table.hasNext()) {
             result.add(table.next());
@@ -46,10 +58,9 @@ public class GrouperTest {
     @Test
     public void testGroupByHaving() {
         String query = "SELECT max(postgres.postgres.test.test.dateField) AS t FROM postgres.postgres.test.test GROUP BY postgres.postgres.test.test.intField HAVING t IS NULL";
-        Executor executor = new Executor();
         Iterator<Table> table = executor.execute("SELECT postgres.postgres.test.test.dateField, postgres.postgres.test.test.intField FROM postgres.postgres.test.test");
         SqlHolder holder = SqlUtils.fillSqlMeta(query);
-        table = Grouper.groupInDb(holder, table, "support_table2");
+        table = grouper.groupInDb(holder, table, "support_table2");
         Table result = new Table();
         while (table.hasNext()) {
             result.add(table.next());
