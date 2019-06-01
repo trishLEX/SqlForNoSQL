@@ -10,6 +10,7 @@ import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.OrderableSelectField;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
+import ru.bmstu.sqlfornosql.executor.ExecutorUtils;
 import ru.bmstu.sqlfornosql.model.DatabaseName;
 
 import javax.annotation.Nullable;
@@ -603,7 +604,7 @@ public class SqlHolder {
             sb.append(" ").append(joinStr).append(" ");
         }
 
-        addWhere(sb);
+        addWhereToQuery(sb);
         addGroupByToQuery(sb);
         addOrderByToQuery(sb);
         addLimit(sb);
@@ -709,6 +710,21 @@ public class SqlHolder {
     private void addWhere(StringBuilder sb) {
         if (whereClause != null) {
             sb.append(" WHERE ").append(whereClause);
+        }
+    }
+
+    private void addWhereToQuery(StringBuilder sb) {
+        if (whereClause != null) {
+            sb.append(" WHERE ");
+            List<String> idents = ExecutorUtils.getIdentsFromString(whereClause.toString());
+            String where = whereClause.toString();
+            for (String ident : idents) {
+                if (ident.codePoints().filter(cp -> cp == '.').count() == 4) {
+                    String newIdent = ident.substring(ident.indexOf('.') + 1);
+                    where = where.replaceAll(ident, newIdent);
+                }
+            }
+            sb.append(where);
         }
     }
 

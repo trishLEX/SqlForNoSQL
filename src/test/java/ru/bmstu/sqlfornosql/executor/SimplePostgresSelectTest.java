@@ -20,7 +20,6 @@ public class SimplePostgresSelectTest {
         printResult(table);
     }
 
-    //TODO fix where
     @Test
     public void whereSelect() {
         Iterator<Table> table = executor.execute(
