@@ -42,7 +42,6 @@ public class MongoClient extends AbstractClient {
         MongoHolder query = ADAPTER.translate(holder);
         //TODO возможно стоит сделать его синглтоном
         MongoMapper mapper = new MongoMapper();
-        //TODO distinct больше не ставится в true, вместо него выполянется group by => данная ветка бесполезна
         if (query.isDistinct()) {
             logger.debug("EXECUTING DISTINCT QUERY: " + query);
             throw new UnsupportedOperationException();
@@ -55,10 +54,14 @@ public class MongoClient extends AbstractClient {
             logger.debug("EXECUTING GROUP BY QUERY: " + query);
             List<Document> documents = new ArrayList<>();
 
-            documents.add(new Document("$group", query.getProjection()));
-
             if (query.getQuery() != null && query.getQuery().size() > 0) {
                 documents.add(new Document("$match", query.getQuery()));
+            }
+
+            documents.add(new Document("$group", query.getProjection()));
+
+            if (query.getQueryAfter() != null && query.getQueryAfter().size() > 0) {
+                documents.add(new Document("$match", query.getQueryAfter()));
             }
 
             if (query.getSort() != null && query.getSort().size() > 0) {

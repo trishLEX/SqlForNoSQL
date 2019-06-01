@@ -39,16 +39,16 @@ public class MongoMapper {
                             .map(SelectField::getNonQualifiedContent)
                             .anyMatch(col -> col.equals(field))
                     ) {
-                        //TODO это условие, кажется, никогда не выполянется
-                        //addValueToRow(row, typeMap, query, element, MONGO_ID);
+                        throw new IllegalStateException("Not supposed to be here");
                     }
                 }
 
                 for (String column : element.keySet()) {
                     if (!column.equals(MONGO_ID) &&
                             query.getSelectFields().stream()
-                            .map(SelectField::getNonQualifiedContent)
-                            .anyMatch(col -> col.equals(column))
+                                    .map(SelectField::getNonQualifiedContent)
+                                    .map(MongoUtils::makeMongoColName)
+                                    .anyMatch(col -> col.equals(column))
                     ) {
                         addValueToRow(row, typeMap, query, element, column);
                     }
@@ -77,7 +77,7 @@ public class MongoMapper {
             Map<String, SelectField> columns = new HashMap<>();
             for (Map.Entry<String, BsonValue> pair : mongoRow.entrySet()) {
                 if (!query.isSelectAll()) {
-                    addValueToRow(row, typeMap, query.getByNonQualifiedName(pair.getKey()), pair.getValue());
+                    addValueToRow(row, typeMap, query.getByMongoName(pair.getKey()), pair.getValue());
                 } else {
                     SelectField column;
                     if (columns.containsKey(pair.getKey())) {
@@ -107,7 +107,7 @@ public class MongoMapper {
                 addValueToRow(
                         row,
                         typeMap,
-                        query.getByNonQualifiedName(
+                        query.getByMongoName(
                                 MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID))
                         ),
                         element.get(MONGO_ID)
@@ -116,7 +116,7 @@ public class MongoMapper {
                 addValueToRow(
                         row,
                         typeMap,
-                        query.getByNonQualifiedName(
+                        query.getByMongoName(
                                 MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID))
                         ),
                         element.get(MONGO_ID)
@@ -126,11 +126,12 @@ public class MongoMapper {
     }
 
     private void addValueToRow(Row row, Map<SelectField, RowType> typeMap, MongoHolder query, BsonDocument document, String column) {
-        BsonValue value = document.get(column);
+        BsonValue value = document.get(MongoUtils.makeMongoColName(column));
         if (!query.isSelectAll()) {
-            addValueToRow(row, typeMap, query.getSelectFields().get(0), value);
+            addValueToRow(row, typeMap, query.getByMongoName(column), value);
         } else {
-            addValueToRow(row, typeMap, query.getByNonQualifiedName(column), value);
+            //addValueToRow(row, typeMap, query.getByMongoName(column), value);
+            throw new IllegalStateException("Not supposed to be here");
         }
     }
 

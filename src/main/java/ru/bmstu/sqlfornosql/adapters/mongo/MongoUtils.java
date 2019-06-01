@@ -47,11 +47,11 @@ public class MongoUtils {
         Document idDocument = new Document();
         for (SelectItem selectItem : nonFunctionItems) {
             Column column = (Column) ((SelectExpressionItem) selectItem).getExpression();
-            String columnName = SqlUtils.getStringValue(column);
-            if (columnName.contains(".")) {
-                columnName = columnName.substring(columnName.lastIndexOf('.') + 1);
-            }
-            idDocument.put(columnName,"$" + columnName);
+            String columnName = SqlUtils.getStringValue(column, true);
+//            if (columnName.contains(".")) {
+//                columnName = columnName.substring(columnName.lastIndexOf('.') + 1);
+//            }
+            idDocument.put(columnName, "$" + columnName);
         }
 
         for (String groupBy : mongoHolder.getGroupBys()) {
@@ -101,7 +101,7 @@ public class MongoUtils {
                 break;
             case "count":
                 if (field != null){
-                    document.put("count" + "(" + field + ")", new Document("$sum", 1));
+                    document.put("count" + "_" + field, new Document("$sum", 1));
                 } else {
                     document.put("count", new Document("$sum", 1));
                 }
@@ -122,12 +122,12 @@ public class MongoUtils {
                 || sqlName.startsWith("avg(")
                 || sqlName.startsWith("min(")
                 || sqlName.startsWith("max(")) {
-            return sqlName.substring(0, 3) + "_" + getNonQualifiedName(sqlName.substring(4, sqlName.length() - 1)) + "";
+            return sqlName.substring(0, 3) + "_" + getNonQualifiedName(sqlName.substring(4, sqlName.length() - 1));
         } else if (sqlName.startsWith("count(")) {
             if (sqlName.contains("*")){
                 return "count";
             } else {
-                return sqlName.substring(0, 5) + "(" + getNonQualifiedName(sqlName.substring(6, sqlName.length() - 1)) + ")";
+                return sqlName.substring(0, 5) + "_" + getNonQualifiedName(sqlName.substring(6, sqlName.length() - 1));
             }
         } else {
             return getNonQualifiedName(sqlName);

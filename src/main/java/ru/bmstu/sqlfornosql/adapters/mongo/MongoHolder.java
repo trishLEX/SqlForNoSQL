@@ -21,6 +21,7 @@ public class MongoHolder {
     private String database;
 
     private Document query;
+    private Document queryAfter;
     private Document projection;
     private Document sort;
     private boolean distinct;
@@ -36,6 +37,7 @@ public class MongoHolder {
 
     private MongoHolder() {
         query = new Document();
+        queryAfter = new Document();
         projection = new Document();
         sort = new Document();
         distinct = false;
@@ -100,7 +102,7 @@ public class MongoHolder {
         }
 
         if (!sqlHolder.getGroupBys().isEmpty() && sqlHolder.getHavingClause() != null) {
-            mongoHolder.query.putAll((Document) WhereClauseParser.parseExpression(
+            mongoHolder.queryAfter.putAll((Document) WhereClauseParser.parseExpression(
                     new Document(), sqlHolder.getHavingClause(), null
             ));
         }
@@ -122,6 +124,10 @@ public class MongoHolder {
 
     public Document getQuery() {
         return query;
+    }
+
+    public Document getQueryAfter() {
+        return queryAfter;
     }
 
     public Document getProjection() {
@@ -172,13 +178,15 @@ public class MongoHolder {
         return columnNameToSelectField;
     }
 
-    public SelectField getByNonQualifiedName(String name) {
-        if (columnNameToSelectField.containsKey(name)) {
+    public SelectField getByMongoName(String name) {
+        if (columnNameToSelectField.keySet().stream()
+                .anyMatch(key -> MongoUtils.makeMongoColName(key).equalsIgnoreCase(name))
+        ) {
             return columnNameToSelectField.get(name);
         }
 
         for (SelectField selectField : selectFields) {
-            if (selectField.getNonQualifiedContent().equalsIgnoreCase(name)) {
+            if (MongoUtils.makeMongoColName(selectField.getNonQualifiedContent()).equalsIgnoreCase(name)) {
                 return selectField;
             }
         }
