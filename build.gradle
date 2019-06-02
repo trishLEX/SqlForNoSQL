@@ -5,10 +5,39 @@ plugins {
 group 'SqlForNoSql'
 version '1.0'
 
-sourceCompatibility = 1.8
+sourceCompatibility = 11
+targetCompatibility = 11
 
 repositories {
     mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+    
+    test {
+        java {
+            srcDirs = ['src/test/java']
+        }
+    }
+}
+
+task buildJar(type: Jar) {
+    manifest {
+        attributes "Main-Class": "ru.bmstu.sqlfornosql.Main"
+    }
+    
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
 }
 
 dependencies {
