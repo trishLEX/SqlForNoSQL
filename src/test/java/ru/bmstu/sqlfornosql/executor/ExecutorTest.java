@@ -9,7 +9,6 @@ import ru.bmstu.sqlfornosql.FunctionalTest;
 import ru.bmstu.sqlfornosql.model.Table;
 
 import java.util.Iterator;
-import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -52,7 +51,7 @@ public class ExecutorTest extends FunctionalTest {
         System.out.println(result);
     }
 
-    @Test(expected = CompletionException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void selectSeveralFromItemsException() {
         String query = "SELECT test.a, test.b FROM mongodb.test.test, postgres.postgres.test.test";
         Iterator<Table> table = executor.execute(query);

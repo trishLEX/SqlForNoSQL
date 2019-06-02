@@ -57,7 +57,7 @@ public class GrouperTest extends FunctionalTest {
     //TODO HAVING не работает (нужны alias'ы)
     @Test
     public void testGroupByHaving() {
-        String query = "SELECT max(postgres.postgres.test.test.dateField) AS t FROM postgres.postgres.test.test GROUP BY postgres.postgres.test.test.intField HAVING t IS NULL";
+        String query = "SELECT max(postgres.postgres.test.test.dateField) AS t FROM postgres.postgres.test.test GROUP BY postgres.postgres.test.test.intField HAVING t IS NOT NULL";
         Iterator<Table> table = executor.execute("SELECT postgres.postgres.test.test.dateField, postgres.postgres.test.test.intField FROM postgres.postgres.test.test");
         SqlHolder holder = SqlUtils.fillSqlMeta(query);
         table = grouper.groupInDb(holder, table, "support_table2");

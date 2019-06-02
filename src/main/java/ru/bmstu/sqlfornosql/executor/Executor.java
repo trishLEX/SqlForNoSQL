@@ -218,7 +218,7 @@ public class Executor {
 
         Set<SelectField> additionalSelectItems = new HashSet<>();
         for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : sqlHolder.getSelectItemMap().entrySet()) {
-            SqlHolder holder = new SqlHolder.SqlHolderBuilder()
+            SqlHolder holder = new SqlHolder.Builder()
                     .withSelectItems(fromItemListEntry.getValue())
                     .withFromItem(fromItemListEntry.getKey())
                     .build();

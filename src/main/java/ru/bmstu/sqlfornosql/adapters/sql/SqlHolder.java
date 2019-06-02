@@ -1,11 +1,10 @@
 package ru.bmstu.sqlfornosql.adapters.sql;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
+import one.util.streamex.StreamEx;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.OrderableSelectField;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
@@ -70,21 +69,6 @@ public class SqlHolder {
         itemToField = new HashMap<>();
     }
 
-    public SqlHolderBuilder toBuilder() {
-        return new SqlHolderBuilder()
-                .withDistinct(isDistinct)
-                .withCountAll(isCountAll)
-                .withLimit(limit)
-                .withOffset(offset)
-                .withSelectItems(selectItems)
-                .withJoins(joins)
-                .withGroupBy(groupBys.stream().map(SelectField::toString).collect(Collectors.toList()))
-                .withOrderByElements(orderByElements)
-                .withFromItem(fromItem)
-                .withWhere(whereClause)
-                .withHaving(havingClause);
-    }
-
     public void setLimit(long limit) {
         this.limit = limit;
     }
@@ -93,26 +77,27 @@ public class SqlHolder {
         this.offset = offset;
     }
 
-    public static class SqlHolderBuilder {
+    public static class Builder {
         private SqlHolder holder;
 
-        public SqlHolderBuilder() {
+        public Builder() {
             this.holder = new SqlHolder();
         }
 
-        public SqlHolderBuilder withDistinct(boolean isDistinct) {
+        public Builder withDistinct(boolean isDistinct) {
             holder.isDistinct = isDistinct;
             return this;
         }
 
-        public SqlHolderBuilder withCountAll(boolean isCountAll) {
+        public Builder withCountAll(boolean isCountAll) {
             holder.isCountAll = isCountAll;
             return this;
         }
 
-        public SqlHolderBuilder withFromItem(@Nullable FromItem fromItem) {
+        public Builder withFromItem(@Nullable FromItem fromItem) {
             if (fromItem != null) {
                 holder.fromItem = fromItem;
+                holder.selectItemMap.put(fromItem, Lists.newArrayList());
 
                 if (fromItem instanceof Table) {
                     Table table = (Table) fromItem;
@@ -123,24 +108,24 @@ public class SqlHolder {
             return this;
         }
 
-        public SqlHolderBuilder withLimit(long limit) {
+        public Builder withLimit(long limit) {
             holder.limit = limit;
             return this;
         }
 
-        public SqlHolderBuilder withOffset(long offset) {
+        public Builder withOffset(long offset) {
             holder.offset = offset;
             return this;
         }
 
-        public SqlHolderBuilder withWhere(@Nullable Expression whereClause) {
+        public Builder withWhere(@Nullable Expression whereClause) {
             if (whereClause != null) {
                 holder.whereClause = whereClause;
             }
             return this;
         }
 
-        public SqlHolderBuilder withSelectItems(@Nullable List<SelectItem> selectItems) {
+        public Builder withSelectItems(@Nullable List<SelectItem> selectItems) {
             if (selectItems != null) {
                 holder.selectItems = selectItems;
                 holder.selectFields = getSelectFieldsFromSelectItems(selectItems);
@@ -160,16 +145,7 @@ public class SqlHolder {
                     .collect(Collectors.toList());
         }
 
-        private String getStringFromSelectItem(SelectItem item) {
-            if (item instanceof AllColumns) {
-                return "*";
-            } else {
-                Expression expression = ((SelectExpressionItem) item).getExpression();
-                return SqlUtils.getStringValue(expression);
-            }
-        }
-
-        public SqlHolderBuilder withJoins(@Nullable List<Join> joins) {
+        public Builder withJoins(@Nullable List<Join> joins) {
             if (joins != null) {
                 holder.joins = joins;
                 for (Join join : joins) {
@@ -180,7 +156,7 @@ public class SqlHolder {
         }
 
         //TODO кажется fromItem может быть разный
-        public SqlHolderBuilder withGroupBy(@Nullable List<String> groupBys) {
+        public Builder withGroupBy(@Nullable List<String> groupBys) {
             if (groupBys != null) {
                 holder.groupBys = groupBys
                         .stream()
@@ -196,21 +172,21 @@ public class SqlHolder {
             return this;
         }
 
-        public SqlHolderBuilder withHaving(@Nullable Expression havingClause) {
+        public Builder withHaving(@Nullable Expression havingClause) {
             if (havingClause != null) {
                 holder.havingClause = havingClause;
             }
             return this;
         }
 
-        private SqlHolderBuilder withOrderBy(@Nullable List<OrderableSelectField> orderByElements) {
+        private Builder withOrderBy(@Nullable List<OrderableSelectField> orderByElements) {
             if (orderByElements != null) {
                 holder.orderBys = orderByElements;
             }
             return this;
         }
 
-        public SqlHolderBuilder withOrderByElements(@Nullable List<OrderByElement> orderByElements) {
+        public Builder withOrderByElements(@Nullable List<OrderByElement> orderByElements) {
             if (orderByElements != null) {
                 holder.orderByElements = orderByElements;
                 return withOrderBy(orderByElements.stream().map(SqlUtils::toSelectField).collect(Collectors.toList()));
@@ -218,94 +194,20 @@ public class SqlHolder {
             return this;
         }
 
-        //TODO переписать, уж больно сложный метод
         public SqlHolder build() {
-            List<SubSelect> subSelects = new ArrayList<>();
-            List<FromItem> tables = new ArrayList<>();
-            if (holder.fromItem != null) {
-                fillVisibleColumnsAndTables(subSelects, tables, holder.fromItem);
-            }
-
-            for (Join join : holder.joins) {
-                FromItem fromItem = join.getRightItem();
-                fillVisibleColumnsAndTables(subSelects, tables, fromItem);
-            }
-
-            Map<SelectItem, SubSelect> columnToSubSelect = new HashMap<>();
-
-            List<SelectItem> visibleColumns = subSelects.stream()
-                    .flatMap(subSelect -> {
-                        PlainSelect body = (PlainSelect) subSelect.getSelectBody();
-                        List<SelectItem> selectItemsStr = body.getSelectItems();
-                        for (SelectItem item : selectItemsStr) {
-                            if (columnToSubSelect.containsKey(item)) {
-                                throw new IllegalStateException("Column name '" + item + "' is clashed");
-                            } else {
-                                columnToSubSelect.put(item, subSelect);
-                            }
-                        }
-
-                        return selectItemsStr.stream();
-                    })
+            List<FromItem> fromItems = StreamEx
+                    .of(holder.fromItem)
+                    .append(holder.joins.stream().map(Join::getRightItem))
                     .collect(Collectors.toList());
 
-            holder.selectItemMap.put(holder.fromItem, Lists.newArrayList());
-
-            for (SelectItem column : holder.selectItems) {
-                boolean existsInVisibleColumns = visibleColumns.contains(column);;
-
-                if (existsInVisibleColumns) {
-                    SubSelect subSelect = columnToSubSelect.get(column);
-                    if (columnToSubSelect.size() == 1 && columnToSubSelect.keySet().stream().map(SelectItem::toString).anyMatch(c -> c.equals("*"))) {
-                        subSelect = Iterables.getOnlyElement(columnToSubSelect.values());
-                    }
-                    if (columnToSubSelect.keySet().stream().map(SelectItem::toString).anyMatch(c -> c.equals("*"))
-                            || holder.selectItemMap.containsKey(subSelect)) {
-                        holder.selectItemMap.get(subSelect).add(column);
-                    } else {
-                        holder.selectItemMap.put(subSelect, Lists.newArrayList(column));
-                    }
+            for (SelectItem selectItem : holder.selectItems) {
+                List<FromItem> potentialSources = selectItem.toString().equals("*") ?
+                        Lists.newArrayList(holder.fromItem) : getPotentialSources(selectItem, fromItems);
+                if (potentialSources.size() != 1) {
+                    throw new IllegalArgumentException("Can't determine source of column: " + selectItem);
                 }
 
-                if (!holder.isSelectAll) {
-                    SelectField selectField = SqlUtils.getSelectFieldFromString(column);
-                    String columnStr = selectField instanceof Column ? selectField.getUserInputName() : ((SelectFieldExpression) selectField).getColumn().getUserInputName();
-                    String columnPrefix;
-                    if (columnStr.contains(".")) {
-                        columnPrefix = columnStr.substring(0, columnStr.lastIndexOf('.'));
-                    } else {
-                        columnPrefix = columnStr;
-                    }
-                    int count = tables
-                            .stream()
-                            .map(table -> {
-                                String fromStr = table.getAlias() != null ? table.getAlias().getName() : ((Table) table).getFullyQualifiedName();
-                                String fromStrSuffix = fromStr.contains(".") ? fromStr.substring(fromStr.lastIndexOf('.') + 1) : fromStr;
-                                if (fromStr.endsWith(columnPrefix) && columnPrefix.contains(fromStrSuffix)) {
-                                    if (holder.selectItemMap.containsKey(table)) {
-                                        holder.selectItemMap.get(table).add(column);
-                                    } else {
-                                        holder.selectItemMap.put(table, Lists.newArrayList(column));
-                                    }
-                                    return 1;
-                                } else {
-                                    return 0;
-                                }
-                            })
-                            .reduce(0, Integer::sum);
-                    //TODO не подходит способ (пример: test.test и t -- test заканчиватеся на t, но это 2 разные таблицы)
-//                    if (count > 1) {
-//                        throw new IllegalArgumentException("Column '" + column + "' clashes");
-//                    }
-
-//                    if (existsInVisibleColumns == (count == 1) && !holder.joins.isEmpty()) {
-//                        throw new IllegalArgumentException("Column '" + column + "' clashes");
-//                    }
-                } else {
-                    for (FromItem table : tables) {
-                        holder.selectItemMap.put(table, holder.selectItems);
-                    }
-                }
+                holder.selectItemMap.get(potentialSources.get(0)).add(selectItem);
             }
 
             for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : holder.selectItemMap.entrySet()) {
@@ -317,19 +219,29 @@ public class SqlHolder {
             return holder;
         }
 
-        private void fillVisibleColumnsAndTables(List<SubSelect> visibleColumns, List<FromItem> tables,
-                FromItem fromItem)
-        {
-            if (fromItem instanceof SubSelect) {
-                SubSelect select = (SubSelect) fromItem;
-                Preconditions.checkNotNull(select.getAlias(), "SubSelects must have alias");
-                visibleColumns.add(select);
-                tables.add(fromItem);
-            } else if (fromItem instanceof Table) {
-                Table table = (Table) fromItem;
-                tables.add(table);
+        private List<FromItem> getPotentialSources(SelectItem selectItem, List<FromItem> fromItems) {
+            return fromItems.stream()
+                    .filter(from -> Builder.isSelectItemFromSource(selectItem, from))
+                    .collect(Collectors.toList());
+        }
+
+        private static boolean isSelectItemFromSource(SelectItem selectItem, FromItem fromItem) {
+            String selectItemStr = SqlUtils.getIdentFromSelectItem(selectItem);
+            if (fromItem instanceof SubSelect || fromItem.getAlias() != null) {
+                return selectItemStr.substring(0, selectItemStr.indexOf('.')).equals(fromItem.getAlias().getName());
             } else {
-                throw new IllegalStateException("Can't determine type of fromItem: " + fromItem);
+                String[] selectItemParts = selectItemStr.split("\\.");
+                String[] fromItemParts = fromItem.toString().split("\\.");
+                for (int i = selectItemParts.length - 2, j = 1;
+                     i >= 0;
+                     i--, j++
+                ) {
+                    if (j > fromItemParts.length || !selectItemParts[i].equals(fromItemParts[fromItemParts.length - j])) {
+                        return false;
+                    }
+                }
+
+                return true;
             }
         }
 
@@ -432,10 +344,6 @@ public class SqlHolder {
         additionalSelectFields.addAll(items);
     }
 
-    public List<String> getSelectIdents() {
-        return selectFields.stream().map(SelectField::getQualifiedIdent).collect(Collectors.toList());
-    }
-
     public List<Join> getJoins() {
         return joins;
     }
@@ -465,26 +373,6 @@ public class SqlHolder {
         return columnNameToSelectField;
     }
 
-    public SelectField getSelectFieldByColumnName(String columnName) {
-        if (columnNameToSelectField.containsKey(columnName)) {
-            return columnNameToSelectField.get(columnName);
-        }
-
-        for (SelectField selectField : selectFields) {
-            if (selectField.getNonQualifiedContent().equalsIgnoreCase(columnName)) {
-                return selectField;
-            }
-        }
-
-        for (SelectField selectField : additionalSelectFields) {
-            if (selectField.getUserInputName().equalsIgnoreCase(columnName)) {
-                return selectField;
-            }
-        }
-
-        throw new NoSuchElementException("Column '" + columnName + "' not in select list");
-    }
-
     public SelectField getFieldByNonQualifiedName(String name) {
         for (SelectField field : selectFields) {
             if (field.getNonQualifiedContent().equalsIgnoreCase(name)) {
@@ -499,22 +387,6 @@ public class SqlHolder {
         }
 
         throw new NoSuchElementException("No field with name: " + name + " in select items");
-    }
-
-    public SelectField getFieldByFullQualifiedName(String name) {
-        for (SelectField field : selectFields) {
-            if (field.getQualifiedContent().equalsIgnoreCase(name)) {
-                return field;
-            }
-        }
-
-        for (SelectField selectField : additionalSelectFields) {
-            if (selectField.getQualifiedContent().equalsIgnoreCase(name)) {
-                return selectField;
-            }
-        }
-
-        throw new NoSuchElementException("No field with name: " + name + "was found");
     }
 
     public SelectField getByUserInput(String name) {

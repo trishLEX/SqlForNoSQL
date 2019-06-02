@@ -373,7 +373,7 @@ public class SqlUtils {
                 havingClause = plainSelect.getHaving();
                 orderByElements = plainSelect.getOrderByElements();
 
-                return new SqlHolder.SqlHolderBuilder()
+                return new SqlHolder.Builder()
                         .withDistinct(isDistinct)
                         .withCountAll(isCountAll)
                         .withFromItem(fromItem)
@@ -409,6 +409,10 @@ public class SqlUtils {
         } else {
             return item;
         }
+    }
+
+    public static String getIdentFromSelectItem(SelectItem item) {
+        return getIdentFromSelectItem(item.toString());
     }
 
     public static OrderableSelectField toSelectField(OrderByElement element) {

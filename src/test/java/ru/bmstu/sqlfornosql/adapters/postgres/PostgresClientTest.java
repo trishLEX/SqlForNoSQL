@@ -20,12 +20,20 @@ public class PostgresClientTest extends FunctionalTest {
     @Test
     public void selectAllTest() {
         Iterator<Table> table = executor.execute("SELECT * FROM postgres.postgres.test.test");
-        System.out.println(table.next());
+        Table result = new Table();
+        while (table.hasNext()) {
+            result.add(table.next());
+        }
+        System.out.println(result);
     }
 
     @Test
     public void groupByTest() {
         Iterator<Table> table = executor.execute("SELECT max(test.intField), max(test.dateField) FROM postgres.postgres.test.test GROUP BY test.intField");
-        System.out.println(table.next());
+        Table result = new Table();
+        while (table.hasNext()) {
+            result.add(table.next());
+        }
+        System.out.println(result);
     }
 }
