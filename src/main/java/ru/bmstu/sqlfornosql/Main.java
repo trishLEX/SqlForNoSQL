@@ -8,6 +8,7 @@ import ru.bmstu.sqlfornosql.executor.Executor;
 import ru.bmstu.sqlfornosql.model.Table;
 
 import java.util.Iterator;
+import java.util.Scanner;
 
 @SpringBootApplication
 public class Main implements CommandLineRunner {
@@ -21,8 +22,15 @@ public class Main implements CommandLineRunner {
 
     @Override
     public void run(String[] args) {
-        String query = args[0];
-        printResult(executor.execute(query));
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("ENTER YOUR QUERY:");
+        String query = scanner.nextLine();
+        while (!query.equalsIgnoreCase("exit")) {
+            printResult(executor.execute(query));
+
+            System.out.println("ENTER YOUR QUERY:");
+            query = scanner.nextLine();
+        }
     }
 
     private static void printResult(Iterator<Table> table) {
