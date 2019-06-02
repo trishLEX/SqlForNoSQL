@@ -56,6 +56,11 @@ public class ExecutorTest extends FunctionalTest {
     public void selectSeveralFromItemsException() {
         String query = "SELECT test.a, test.b FROM mongodb.test.test, postgres.postgres.test.test";
         Iterator<Table> table = executor.execute(query);
+        Table result = new Table();
+        while (table.hasNext()) {
+            result.add(table.next());
+        }
+        System.out.println(result);
     }
 
     @Test
