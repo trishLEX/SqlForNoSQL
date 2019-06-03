@@ -249,27 +249,27 @@ public class Executor {
                 }
             }
 
-            if (!sqlHolder.getGroupBys().isEmpty()) {
-                List<SelectField> groupBys = new ArrayList<>();
-                for (SelectField groupByItem : sqlHolder.getGroupBys()) {
-                    if (selectItemsStr.contains(groupByItem)) {
-                        groupBys.add(groupByItem);
-                    }
-                }
-
-                if (!groupBys.isEmpty()) {
-                    query += " GROUP BY " + groupBys.stream().map(SelectField::getQualifiedContent).collect(Collectors.joining(" ,"));
-                }
-
-                if (sqlHolder.getHavingClause() != null) {
-                    List<String> havingOrParts = new ArrayList<>();
-                    fillIdents(selectItemsStr, havingOrParts, sqlHolder.getHavingClause());
-
-                    if (!havingOrParts.isEmpty()) {
-                        query += " HAVING " + String.join(" OR ", havingOrParts);
-                    }
-                }
-            }
+//            if (!sqlHolder.getGroupBys().isEmpty()) {
+//                List<SelectField> groupBys = new ArrayList<>();
+//                for (SelectField groupByItem : sqlHolder.getGroupBys()) {
+//                    if (selectItemsStr.contains(groupByItem)) {
+//                        groupBys.add(groupByItem);
+//                    }
+//                }
+//
+//                if (!groupBys.isEmpty()) {
+//                    query += " GROUP BY " + groupBys.stream().map(SelectField::getQualifiedContent).collect(Collectors.joining(" ,"));
+//                }
+//
+//                if (sqlHolder.getHavingClause() != null) {
+//                    List<String> havingOrParts = new ArrayList<>();
+//                    fillIdents(selectItemsStr, havingOrParts, sqlHolder.getHavingClause());
+//
+//                    if (!havingOrParts.isEmpty()) {
+//                        query += " HAVING " + String.join(" OR ", havingOrParts);
+//                    }
+//                }
+//            }
 
             if (!sqlHolder.getOrderBys().isEmpty()) {
                 List<String> orderBys = new ArrayList<>();
@@ -302,6 +302,11 @@ public class Executor {
                 new ArrayList<>(resultParts.values()),
                 Sets.difference(additionalSelectItems, Sets.newHashSet(sqlHolder.getSelectFields()))
         );
+
+        //TODO можно оптимизировать, чтобы два раза в базу не ходить
+        if (!sqlHolder.getGroupBys().isEmpty()) {
+            result = grouper.groupInDb(sqlHolder, result, ExecutorUtils.createSupportTableName());
+        }
 
         if (!sqlHolder.getOrderBys().isEmpty()) {
             result = orderer.orderInDb(

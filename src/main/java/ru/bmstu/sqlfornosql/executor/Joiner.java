@@ -184,6 +184,7 @@ public class Joiner {
         Expression where = holder.getWhereClause();
         if (where == null) {
             row.remove(additionalFields);
+            additionalFields.forEach(table.getTypeMap()::remove);
             table.add(row);
         } else {
             HashMap<String, Integer> colMapping = getIdentMapping(where.toString());
@@ -198,6 +199,7 @@ public class Joiner {
             try {
                 Boolean expressionValue = (Boolean) sqljep.getValue(values);
                 if (expressionValue) {
+                    additionalFields.forEach(table.getTypeMap()::remove);
                     row.remove(additionalFields);
                     table.add(row);
                 }

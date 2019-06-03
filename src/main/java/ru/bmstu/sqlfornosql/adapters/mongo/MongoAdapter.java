@@ -24,7 +24,7 @@ public class MongoAdapter {
     }
 
     public MongoHolder translate(SqlHolder sqlHolder) {
-        logger.info("translating sql: " + sqlHolder.toString());
+        logger.info("translating sql: " + sqlHolder.getSqlQuery());
 
         validate(sqlHolder);
 

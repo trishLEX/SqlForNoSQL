@@ -94,7 +94,14 @@ public class ExecutorUtils {
     private static Table createTable(Iterator<Table> tables, Statement statement, String suppoertTableName) throws SQLException {
         StringBuilder query = new StringBuilder("CREATE TABLE " + suppoertTableName + " ( ");
         int i = 0;
-        Table table = tables.next();
+        Table table = null;
+        //FIXME говнокод
+        while (tables.hasNext()) {
+            table = tables.next();
+            if (!table.isEmpty()) {
+                break;
+            }
+        }
         for (Map.Entry<SelectField, RowType> field : table.getTypeMap().entrySet()) {
             query.append('"').append(field.getKey().getQualifiedContent().toLowerCase()).append('"').append(" ").append(field.getValue().getSqlName());
             if (i < table.getTypeMap().size() - 1) {
@@ -167,7 +174,7 @@ public class ExecutorUtils {
     }
 
     private static void dropTable(Statement statement, String supportTableName) throws SQLException {
-        statement.execute("DROP TABLE IF EXISTS " + supportTableName);
+        //statement.execute("DROP TABLE IF EXISTS " + supportTableName);
     }
 
     static void dropSupportTable(String supportTableName) {

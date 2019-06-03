@@ -491,11 +491,11 @@ public class SqlHolder {
         addDistinct(sb);
 
         Set<String> selectItems = selectFields.stream()
-                .map(SelectField::getQualifiedContent)
+                .map(SelectField::getQualifiedIdent)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         selectItems.addAll(additionalSelectFields.stream()
-                .map(SelectField::getQualifiedContent)
+                .map(SelectField::getQualifiedIdent)
                 .collect(Collectors.toSet())
         );
         sb.append(String.join(", ", selectItems));
