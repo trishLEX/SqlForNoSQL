@@ -1,8 +1,12 @@
 package ru.bmstu.sqlfornosql;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import ru.bmstu.sqlfornosql.executor.*;
+import ru.bmstu.sqlfornosql.adapters.AbstractClient;
+import ru.bmstu.sqlfornosql.adapters.mongo.MongoClient;
+import ru.bmstu.sqlfornosql.adapters.postgres.PostgresClient;
+import ru.bmstu.sqlfornosql.executor.ExecutorConfig;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,15 +14,14 @@ import java.util.Properties;
 
 @TestConfiguration
 public class FunctionalTest {
-    private static final ExecutorConfig EXECUTOR_CONFIG;
 
-    static {
-        System.setProperty("spring.main.allow-bean-definition-overriding", "true");
+    @Bean
+    public ExecutorConfig executorConfig() {
         InputStream configStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("app.properties");
         Properties properties = new Properties();
         try {
             properties.load(configStream);
-            EXECUTOR_CONFIG = new ExecutorConfig.Builder()
+            return new ExecutorConfig.Builder()
                     .setPostgresUser(properties.getProperty("postgres.user"))
                     .setPostgresHost(properties.getProperty("postgres.host"))
                     .setPostgresPort(Integer.valueOf(properties.getProperty("postgres.port")))
@@ -36,22 +39,23 @@ public class FunctionalTest {
     }
 
     @Bean
-    public Executor executor() {
-        return new Executor(EXECUTOR_CONFIG);
+    @Autowired
+    public AbstractClient postgresClient(ExecutorConfig executorConfig) {
+        return new PostgresClient(
+                executorConfig.getPostgresHost(),
+                executorConfig.getPostgresPort(),
+                executorConfig.getPostgresUser(),
+                executorConfig.getPostgresPassword(),
+                executorConfig.getPostgresDatabase()
+        );
     }
 
     @Bean
-    public Orderer orderer() {
-        return new Orderer(EXECUTOR_CONFIG);
-    }
-
-    @Bean
-    public Joiner joiner() {
-        return new Joiner();
-    }
-
-    @Bean
-    public Grouper grouper() {
-        return new Grouper(EXECUTOR_CONFIG);
+    @Autowired
+    public AbstractClient mongoClient(ExecutorConfig executorConfig) {
+        return new MongoClient(
+                executorConfig.getMongodbDatabase(),
+                executorConfig.getMongodbCollection()
+        );
     }
 }
