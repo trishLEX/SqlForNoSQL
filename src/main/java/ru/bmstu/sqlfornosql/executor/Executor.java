@@ -55,26 +55,19 @@ public class Executor {
             "DESC"
     );
 
-    private final Orderer orderer;
-    private final Joiner joiner;
-    private final Grouper grouper;
-
-    private final AbstractClient postgresClient;
-    private final AbstractClient mongoClient;
+    private ExecutorConfig config;
 
     @Autowired
-    public Executor(
-            Orderer orderer,
-            Joiner joiner,
-            Grouper grouper,
-            AbstractClient postgresClient,
-            AbstractClient mongoClient
-    ) {
-        this.orderer = orderer;
-        this.joiner = joiner;
-        this.grouper = grouper;
-        this.postgresClient = postgresClient;
-        this.mongoClient = mongoClient;
+    private Orderer orderer;
+
+    @Autowired
+    private Joiner joiner;
+
+    @Autowired
+    private Grouper grouper;
+
+    public Executor(ExecutorConfig config) {
+        this.config = config;
     }
 
     public TableIterator execute(String sql) {
@@ -100,9 +93,17 @@ public class Executor {
         if (sqlHolder.getFromItem() instanceof net.sf.jsqlparser.schema.Table) {
             switch (sqlHolder.getDatabase().getDbType()) {
                 case POSTGRES: {
-                    return new TableIterator(postgresClient, sqlHolder);
+                    AbstractClient client = new PostgresClient(
+                            config.getPostgresHost(),
+                            config.getPostgresPort(),
+                            config.getPostgresUser(),
+                            config.getPostgresPassword(),
+                            config.getPostgresDatabase()
+                    );
+                    return new TableIterator(client, sqlHolder);
                 }
                 case MONGODB: {
+                    AbstractClient mongoClient = new MongoClient(config.getMongodbDatabase(), config.getMongodbCollection());
                     return new TableIterator(mongoClient, sqlHolder);
                 }
                 default:

@@ -97,6 +97,13 @@ public class MongoClient extends AbstractClient {
     }
 
     @Override
+    public void open() {
+        client = new com.mongodb.MongoClient();
+        MongoDatabase database = client.getDatabase(dbName);
+        collection = database.getCollection(table, BsonDocument.class);
+    }
+
+    @Override
     public void close() {
         client.close();
     }
