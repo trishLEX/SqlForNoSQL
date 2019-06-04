@@ -55,19 +55,26 @@ public class Executor {
             "DESC"
     );
 
-    private ExecutorConfig config;
+    private final Orderer orderer;
+    private final Joiner joiner;
+    private final Grouper grouper;
+
+    private final AbstractClient postgresClient;
+    private final AbstractClient mongoClient;
 
     @Autowired
-    private Orderer orderer;
-
-    @Autowired
-    private Joiner joiner;
-
-    @Autowired
-    private Grouper grouper;
-
-    public Executor(ExecutorConfig config) {
-        this.config = config;
+    public Executor(
+            Orderer orderer,
+            Joiner joiner,
+            Grouper grouper,
+            AbstractClient postgresClient,
+            AbstractClient mongoClient
+    ) {
+        this.orderer = orderer;
+        this.joiner = joiner;
+        this.grouper = grouper;
+        this.postgresClient = postgresClient;
+        this.mongoClient = mongoClient;
     }
 
     public TableIterator execute(String sql) {
@@ -93,17 +100,9 @@ public class Executor {
         if (sqlHolder.getFromItem() instanceof net.sf.jsqlparser.schema.Table) {
             switch (sqlHolder.getDatabase().getDbType()) {
                 case POSTGRES: {
-                    AbstractClient client = new PostgresClient(
-                            config.getPostgresHost(),
-                            config.getPostgresPort(),
-                            config.getPostgresUser(),
-                            config.getPostgresPassword(),
-                            config.getPostgresDatabase()
-                    );
-                    return new TableIterator(client, sqlHolder);
+                    return new TableIterator(postgresClient, sqlHolder);
                 }
                 case MONGODB: {
-                    AbstractClient mongoClient = new MongoClient(config.getMongodbDatabase(), config.getMongodbCollection());
                     return new TableIterator(mongoClient, sqlHolder);
                 }
                 default:
@@ -247,39 +246,6 @@ public class Executor {
 
                 if (!queryOrParts.isEmpty()) {
                     query += " WHERE " + String.join(" OR ", queryOrParts);
-                }
-            }
-
-//            if (!sqlHolder.getGroupBys().isEmpty()) {
-//                List<SelectField> groupBys = new ArrayList<>();
-//                for (SelectField groupByItem : sqlHolder.getGroupBys()) {
-//                    if (selectItemsStr.contains(groupByItem)) {
-//                        groupBys.add(groupByItem);
-//                    }
-//                }
-//
-//                if (!groupBys.isEmpty()) {
-//                    query += " GROUP BY " + groupBys.stream().map(SelectField::getQualifiedContent).collect(Collectors.joining(" ,"));
-//                }
-//
-//                if (sqlHolder.getHavingClause() != null) {
-//                    List<String> havingOrParts = new ArrayList<>();
-//                    fillIdents(selectItemsStr, havingOrParts, sqlHolder.getHavingClause());
-//
-//                    if (!havingOrParts.isEmpty()) {
-//                        query += " HAVING " + String.join(" OR ", havingOrParts);
-//                    }
-//                }
-//            }
-
-            if (!sqlHolder.getOrderBys().isEmpty()) {
-                List<String> orderBys = new ArrayList<>();
-                for (OrderableSelectField orderByItem : sqlHolder.getOrderBys()) {
-                    fillIdents(selectItemsStr, orderBys, orderByItem.getUserInputName());
-                }
-
-                if (!orderBys.isEmpty()) {
-                    query += " ORDER BY " + String.join(" ,", orderBys);
                 }
             }
 

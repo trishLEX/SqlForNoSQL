@@ -64,7 +64,7 @@ public class TableIterator implements Iterator<Table>, Iterable<Table> {
     @Override
     @Nonnull
     public Iterator<Table> iterator() {
-        client.open();
+        //client.open();
         return new TableIterator(client, holder);
     }
 
@@ -93,7 +93,7 @@ public class TableIterator implements Iterator<Table>, Iterable<Table> {
                 if (afterAll != null) {
                     afterAll.run();
                 }
-                client.close();
+                //client.close();
             }
             return lastTable;
         }

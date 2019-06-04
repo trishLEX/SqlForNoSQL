@@ -56,4 +56,33 @@ public class ExecutorConfiguration {
                 executorConfig.getMongodbCollection()
         );
     }
+
+    @Bean
+    @Autowired
+    public Executor executor(
+            Orderer orderer,
+            Joiner joiner,
+            Grouper grouper,
+            AbstractClient postgresClient,
+            AbstractClient mongoClient
+    ) {
+        return new Executor(orderer, joiner, grouper, postgresClient, mongoClient);
+    }
+
+    @Bean
+    @Autowired
+    public Orderer orderer(ExecutorConfig executorConfig) {
+        return new Orderer(executorConfig);
+    }
+
+    @Bean
+    public Joiner joiner() {
+        return new Joiner();
+    }
+
+    @Bean
+    @Autowired
+    public Grouper grouper(ExecutorConfig executorConfig) {
+        return new Grouper(executorConfig);
+    }
 }

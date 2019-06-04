@@ -13,6 +13,6 @@ public abstract class AbstractClient implements AutoCloseable {
         return CompletableFuture.supplyAsync(() -> executeQuery(holder), Executor.EXECUTOR);
     }
 
-    public abstract void open();
+//    public abstract void open();
     public abstract void close();
 }

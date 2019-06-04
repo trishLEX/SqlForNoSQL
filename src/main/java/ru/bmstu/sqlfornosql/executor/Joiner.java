@@ -85,7 +85,11 @@ public class Joiner {
                         Join join = holder.getJoins().get(curJoin);
 
                         curRightTableFuture = null;
-                        return joinTables(leftTable, rightTable, join, holder, additionalFields);
+                        Table joined = joinTables(leftTable, rightTable, join, holder, additionalFields);
+                        if (joined.isEmpty() && hasNext()) {
+                            return next();
+                        }
+                        return joined;
                     } else if (leftTableIterator.hasNext()) {
                         Table leftTable = curLeftTableFuture.join();
                         Table rightTable = curRightTableFuture.join();
