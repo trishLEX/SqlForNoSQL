@@ -57,6 +57,6 @@ dependencies {
     compile group: 'com.h2database', name: 'h2', version: '1.4.199'
     compile group: 'org.springframework.boot', name: 'spring-boot', version: '2.1.5.RELEASE'
     compile group: 'org.springframework.boot', name: 'spring-boot-autoconfigure', version: '2.1.5.RELEASE'
-    compile group: 'org.apache.commons', name: 'commons-dbcp2', version: '2.6.0'
+    compile group: 'com.zaxxer', name: 'HikariCP', version: '3.3.1'
     compile fileTree('libs') {include '*.jar'}
 }

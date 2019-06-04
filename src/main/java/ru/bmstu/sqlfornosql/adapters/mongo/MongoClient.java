@@ -22,13 +22,9 @@ public class MongoClient extends AbstractClient {
     private static final MongoAdapter ADAPTER = new MongoAdapter();
 
     private MongoCollection<BsonDocument> collection;
-    private String dbName;
-    private String table;
     private com.mongodb.MongoClient client;
 
     public MongoClient(String dbName, String table) {
-        this.dbName = dbName;
-        this.table = table;
         client = new com.mongodb.MongoClient();
         MongoDatabase database = client.getDatabase(dbName);
         collection = database.getCollection(table, BsonDocument.class);

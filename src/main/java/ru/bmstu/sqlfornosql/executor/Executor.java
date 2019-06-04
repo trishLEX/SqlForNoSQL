@@ -99,12 +99,10 @@ public class Executor {
         sqlHolder.fillColumnMap();
         if (sqlHolder.getFromItem() instanceof net.sf.jsqlparser.schema.Table) {
             switch (sqlHolder.getDatabase().getDbType()) {
-                case POSTGRES: {
+                case POSTGRES:
                     return new TableIterator(postgresClient, sqlHolder);
-                }
-                case MONGODB: {
+                case MONGODB:
                     return new TableIterator(mongoClient, sqlHolder);
-                }
                 default:
                     throw new IllegalArgumentException("Unknown database type");
             }

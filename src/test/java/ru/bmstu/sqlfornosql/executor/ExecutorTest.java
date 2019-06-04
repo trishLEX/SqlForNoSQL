@@ -136,7 +136,6 @@ public class ExecutorTest extends FunctionalTest {
         System.out.println(result);
     }
 
-    //TODO нет логов
     @Test
     public void simpleSubSelect() {
         String query = "SELECT t.intField FROM (SELECT * FROM postgres.postgres.test.test) AS t WHERE t.intField = 123";
@@ -159,7 +158,6 @@ public class ExecutorTest extends FunctionalTest {
         System.out.println(result);
     }
 
-    //TODO глянуть почему нет логов
     @Test
     public void groupBySubSelectWithWhere() {
         String query = "SELECT sum(t.intField) FROM " +

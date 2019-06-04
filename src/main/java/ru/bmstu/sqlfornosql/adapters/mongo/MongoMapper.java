@@ -20,11 +20,10 @@ import java.util.Map;
 import static ru.bmstu.sqlfornosql.adapters.mongo.MongoHolder.MONGO_ID;
 
 public class MongoMapper {
-    //TODO логика с названием колонок, в монге и вообще класс SelectField
     public Table mapGroupBy(MongoIterable<BsonDocument> mongoResult, MongoHolder query) {
         Table table = new Table();
         for (BsonDocument element : mongoResult) {
-            System.out.println(element);
+            //System.out.println(element);
             Row row = new Row(table);
             Map<SelectField, RowType> typeMap = new LinkedHashMap<>();
 
@@ -70,7 +69,7 @@ public class MongoMapper {
     public Table mapFind(FindIterable<BsonDocument> mongoResult, MongoHolder query) {
         Table table = new Table();
         for (BsonDocument mongoRow : mongoResult) {
-            System.out.println(mongoRow);
+            //System.out.println(mongoRow);
             Row row = new Row(table);
             Map<SelectField, RowType> typeMap = new LinkedHashMap<>();
 
@@ -113,14 +112,15 @@ public class MongoMapper {
                         element.get(MONGO_ID)
                 );
             } else {
-                addValueToRow(
-                        row,
-                        typeMap,
-                        query.getByMongoName(
-                                MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID))
-                        ),
-                        element.get(MONGO_ID)
-                );
+//                addValueToRow(
+//                        row,
+//                        typeMap,
+//                        query.getByMongoName(
+//                                MongoUtils.normalizeColumnName(query.getProjection().getString(MONGO_ID))
+//                        ),
+//                        element.get(MONGO_ID)
+//                );
+                throw new IllegalStateException("Not supposed to be here");
             }
         }
     }
