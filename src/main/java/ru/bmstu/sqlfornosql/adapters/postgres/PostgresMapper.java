@@ -65,7 +65,7 @@ public class PostgresMapper {
                 columns.put(metaData.getColumnName(i), new Column(metaData.getColumnName(i)).withSource(query.getFromItem()));
             }
 
-            while (resultSet.next()) {
+            for (int rowNum = 0; resultSet.next() && rowNum < TableIterator.BATCH_SIZE; rowNum++) {
                 Row row = new Row(table);
                 Map<SelectField, RowType> typeMap = new LinkedHashMap<>();
                 for (int i = 1; i <= metaData.getColumnCount(); i++) {

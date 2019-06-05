@@ -9,7 +9,7 @@ import java.util.NoSuchElementException;
 
 public class TableIterator implements Iterator<Table>, Iterable<Table> {
     public static final long BATCH_SIZE = 1;
-    private long lastBatchSize;
+    protected long lastBatchSize;
     private AbstractClient client;
     private SqlHolder holder;
     private int offsetIndex;
