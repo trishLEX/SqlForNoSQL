@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.*;
 
 @Component
-public class Executor {
+public class Executor implements AutoCloseable {
     public static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     //вводится правило, что работаем только с lowerCase'ми
     static final Pattern IDENT_REGEXP = Pattern.compile("([a-zA-Z]+[0-9a-zA-Z.]*)");
@@ -331,5 +331,11 @@ public class Executor {
         for (String part : orParts) {
             fillIdents(selectItemsStr, whereOrParts, part);
         }
+    }
+
+    @Override
+    public void close() throws Exception {
+        postgresClient.close();
+        mongoClient.close();
     }
 }

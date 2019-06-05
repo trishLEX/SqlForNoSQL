@@ -31,6 +31,12 @@ public class Main implements CommandLineRunner {
             System.out.println("ENTER YOUR QUERY:");
             query = scanner.nextLine();
         }
+
+        try {
+            executor.close();
+        } catch (Exception e) {
+            throw new IllegalStateException("Can't close executor", e);
+        }
     }
 
     private static void printResult(Iterator<Table> table) {
