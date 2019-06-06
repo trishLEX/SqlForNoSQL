@@ -58,7 +58,7 @@ public class PostgresMapper {
 
     public Table mapResultSet(ResultSet resultSet, SqlHolder query) {
         Table table = new Table();
-        try (resultSet){
+        try {
             ResultSetMetaData metaData = resultSet.getMetaData();
             Map<String, SelectField> columns = new HashMap<>();
             for (int i = 1; i <= metaData.getColumnCount(); i++) {

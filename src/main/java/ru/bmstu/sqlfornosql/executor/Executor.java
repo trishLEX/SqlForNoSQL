@@ -100,9 +100,9 @@ public class Executor implements AutoCloseable {
         if (sqlHolder.getFromItem() instanceof net.sf.jsqlparser.schema.Table) {
             switch (sqlHolder.getDatabase().getDbType()) {
                 case POSTGRES:
-                    return new TableIterator(postgresClient, sqlHolder);
+                    return postgresClient.executeQuery(sqlHolder);
                 case MONGODB:
-                    return new TableIterator(mongoClient, sqlHolder);
+                    return mongoClient.executeQuery(sqlHolder);
                 default:
                     throw new IllegalArgumentException("Unknown database type");
             }

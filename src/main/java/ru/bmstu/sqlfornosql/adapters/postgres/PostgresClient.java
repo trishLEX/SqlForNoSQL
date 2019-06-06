@@ -37,6 +37,7 @@ public class PostgresClient extends AbstractClient {
             connectionPool.setPassword(password);
             connectionPool.setDriverClassName("org.postgresql.Driver");
             connectionPool.setJdbcUrl(connectionString);
+            connectionPool.setAutoCommit(false);
             connectionPool.setMaximumPoolSize(Runtime.getRuntime().availableProcessors());
     }
 
@@ -44,10 +45,11 @@ public class PostgresClient extends AbstractClient {
     public TableIterator executeQuery(SqlHolder query) {
         query.updateSelectItems();
         logger.info("Executing postgres query: " + query.getSqlQuery());
-        try (
-                Connection connection = connectionPool.getConnection();
-        ) {
-            Statement statement = connection.createStatement();
+        try {
+            Connection connection = connectionPool.getConnection();
+            connection.setAutoCommit(false);
+            Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, ResultSet.FETCH_FORWARD);
+            statement.setFetchSize((int) TableIterator.BATCH_SIZE);
             ResultSet resultSet = statement.executeQuery(query.getSqlQuery());
             //return new PostgresMapper().mapResultSet(resultSet, query);
             return new TableIterator() {

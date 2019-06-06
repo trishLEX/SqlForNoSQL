@@ -9,6 +9,7 @@ import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
+import ru.bmstu.sqlfornosql.model.TableIterator;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -22,7 +23,11 @@ import static ru.bmstu.sqlfornosql.adapters.mongo.MongoHolder.MONGO_ID;
 public class MongoMapper {
     public Table mapGroupBy(MongoIterable<BsonDocument> mongoResult, MongoHolder query) {
         Table table = new Table();
+        long rowCount = 0;
         for (BsonDocument element : mongoResult) {
+            if (rowCount >= TableIterator.BATCH_SIZE) {
+                break;
+            }
             //System.out.println(element);
             Row row = new Row(table);
             Map<SelectField, RowType> typeMap = new LinkedHashMap<>();
@@ -55,6 +60,7 @@ public class MongoMapper {
             }
 
             table.add(row, typeMap);
+            rowCount++;
         }
 
         return table;
@@ -68,7 +74,11 @@ public class MongoMapper {
 
     public Table mapFind(FindIterable<BsonDocument> mongoResult, MongoHolder query) {
         Table table = new Table();
+        long rowCount = 0;
         for (BsonDocument mongoRow : mongoResult) {
+            if (rowCount >= TableIterator.BATCH_SIZE) {
+                break;
+            }
             //System.out.println(mongoRow);
             Row row = new Row(table);
             Map<SelectField, RowType> typeMap = new LinkedHashMap<>();
@@ -90,6 +100,7 @@ public class MongoMapper {
             }
 
             table.add(row, typeMap);
+            rowCount++;
         }
 
         return table;
