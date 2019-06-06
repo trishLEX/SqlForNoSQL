@@ -1,11 +1,10 @@
 package ru.bmstu.sqlfornosql.adapters.mongo;
 
-import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoIterable;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.Column;
 import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectField;
+import ru.bmstu.sqlfornosql.adapters.sql.selectfield.SelectFieldExpression;
 import ru.bmstu.sqlfornosql.model.Row;
 import ru.bmstu.sqlfornosql.model.RowType;
 import ru.bmstu.sqlfornosql.model.Table;
@@ -15,19 +14,27 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static ru.bmstu.sqlfornosql.adapters.mongo.MongoHolder.MONGO_ID;
 
 public class MongoMapper {
-    public Table mapGroupBy(MongoIterable<BsonDocument> mongoResult, MongoHolder query) {
+    public Table map(Iterator<BsonDocument> mongoResult, MongoHolder query) {
+        if (!query.getGroupBys().isEmpty() ||
+                query.getSelectFields().stream().allMatch(field -> field instanceof SelectFieldExpression)
+        ) {
+            return mapGroupBy(mongoResult, query);
+        } else {
+            return mapFind(mongoResult, query);
+        }
+    }
+
+    public Table mapGroupBy(Iterator<BsonDocument> mongoResult, MongoHolder query) {
         Table table = new Table();
-        long rowCount = 0;
-        for (BsonDocument element : mongoResult) {
-            if (rowCount >= TableIterator.BATCH_SIZE) {
-                break;
-            }
+        for (int rowCount = 0; mongoResult.hasNext() && rowCount < TableIterator.BATCH_SIZE; rowCount++) {
+            BsonDocument element = mongoResult.next();
             //System.out.println(element);
             Row row = new Row(table);
             Map<SelectField, RowType> typeMap = new LinkedHashMap<>();
@@ -60,7 +67,6 @@ public class MongoMapper {
             }
 
             table.add(row, typeMap);
-            rowCount++;
         }
 
         return table;
@@ -72,13 +78,10 @@ public class MongoMapper {
         return new Table().add(column, count, RowType.INT);
     }
 
-    public Table mapFind(FindIterable<BsonDocument> mongoResult, MongoHolder query) {
+    public Table mapFind(Iterator<BsonDocument> mongoResult, MongoHolder query) {
         Table table = new Table();
-        long rowCount = 0;
-        for (BsonDocument mongoRow : mongoResult) {
-            if (rowCount >= TableIterator.BATCH_SIZE) {
-                break;
-            }
+        for (int rowCount = 0; mongoResult.hasNext() && rowCount < TableIterator.BATCH_SIZE; rowCount++) {
+            BsonDocument mongoRow = mongoResult.next();
             //System.out.println(mongoRow);
             Row row = new Row(table);
             Map<SelectField, RowType> typeMap = new LinkedHashMap<>();
@@ -100,7 +103,6 @@ public class MongoMapper {
             }
 
             table.add(row, typeMap);
-            rowCount++;
         }
 
         return table;
