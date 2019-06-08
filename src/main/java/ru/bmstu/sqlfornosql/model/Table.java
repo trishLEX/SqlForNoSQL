@@ -152,7 +152,7 @@ public class Table {
         this.rows.clear();
     }
 
-    public long size() {
+    public int size() {
         return rows.size();
     }
 

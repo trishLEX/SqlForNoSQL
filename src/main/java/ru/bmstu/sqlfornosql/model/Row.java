@@ -75,6 +75,18 @@ public class Row {
         }
     }
 
+    public Long getLong(SelectField key) {
+        if (table.getType(key) != null) {
+            if (table.getType(key) == RowType.LONG) {
+                return (Long) values.get(key);
+            } else {
+                throw new IllegalArgumentException("Column '" + key + "' has type: " + table.getType(key));
+            }
+        } else {
+            throw new IllegalArgumentException("No column with name: " + key);
+        }
+    }
+
     public String getString(SelectField key) {
         if (table.getType(key) != null) {
             if (table.getType(key) == RowType.STRING) {
@@ -116,6 +128,10 @@ public class Row {
 
     public boolean contains(SelectField key) {
         return values.containsKey(key);
+    }
+
+    public boolean contains(String key) {
+        return getColumns().stream().anyMatch(column -> column.getUserInputName().equals(key));
     }
 
     public boolean isEmpty() {

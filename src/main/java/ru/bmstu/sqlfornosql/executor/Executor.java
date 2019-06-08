@@ -193,6 +193,10 @@ public class Executor implements AutoCloseable {
                         result.sort(orderByMap);
                     }
 
+                    if (!hasNext()) {
+                        afterAll.forEach(Runnable::run);
+                    }
+
                     return result;
                 }
             };

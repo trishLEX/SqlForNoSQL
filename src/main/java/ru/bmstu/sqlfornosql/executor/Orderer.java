@@ -47,7 +47,7 @@ public class Orderer {
             ExecutorUtils.H2Iterator rs = order(holder, connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY), supportTableName);
 
             TableIterator result = MAPPER.mapResultSet(rs, holder);
-            result.setAfterAll(() -> dropSupportTable(supportTableName));
+            result.addAfterAll(() -> dropSupportTable(supportTableName));
             return result;
         } catch (SQLException e) {
             throw new IllegalStateException("Can't perform h2 query", e);

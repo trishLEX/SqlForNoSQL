@@ -51,8 +51,7 @@ public class PostgresClient extends AbstractClient {
             Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY, ResultSet.FETCH_FORWARD);
             statement.setFetchSize((int) TableIterator.BATCH_SIZE);
             ResultSet resultSet = statement.executeQuery(query.getSqlQuery());
-            //return new PostgresMapper().mapResultSet(resultSet, query);
-            return new TableIterator() {
+            TableIterator tableIterator = new TableIterator() {
                 @Nonnull
                 @Override
                 public Iterator<Table> iterator() {
@@ -64,12 +63,28 @@ public class PostgresClient extends AbstractClient {
                     if (hasNext()) {
                         Table table = MAPPER.mapResultSet(resultSet, query);
                         lastBatchSize = table.size();
+
+                        if (!hasNext()) {
+                            afterAll.forEach(Runnable::run);
+                        }
+
                         return table;
                     }
 
                     throw new NoSuchElementException("There are no more elements");
                 }
             };
+
+            tableIterator.addAfterAll(() -> {
+                try {
+                    connection.close();
+                    statement.close();
+                    resultSet.close();
+                } catch (SQLException e) {
+                    throw new IllegalStateException("Can't close connection", e);
+                }
+            });
+            return tableIterator;
         } catch (SQLException e) {
             throw new IllegalStateException("Can't execute query: " + query.getSqlQuery(), e);
         }

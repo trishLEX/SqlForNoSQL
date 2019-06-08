@@ -58,12 +58,17 @@ public class MongoClient extends AbstractClient {
                     Table table;
                     if (query.isCountAll()) {
                         lastBatchSize = 0;
-                        return MAPPER.mapCountAll(countAll(query), query);
+                        table = MAPPER.mapCountAll(countAll(query), query);
                     } else {
                         table = MAPPER.map(result, query);
                         lastBatchSize = table.size();
-                        return table;
                     }
+
+                    if (!hasNext()) {
+                        afterAll.forEach(Runnable::run);
+                    }
+
+                    return table;
                 }
 
                 throw new NoSuchElementException("There are no more elements");

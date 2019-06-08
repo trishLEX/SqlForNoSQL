@@ -1,5 +1,6 @@
 package ru.bmstu.sqlfornosql.executor;
 
+import com.google.common.collect.Lists;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.statement.select.Join;
 import org.medfoster.sqljep.ParseException;
@@ -87,8 +88,13 @@ public class Joiner {
                         curRightTableFuture = null;
                         Table joined = joinTables(leftTable, rightTable, join, holder, additionalFields);
                         if (joined.isEmpty() && hasNext()) {
-                            return next();
+                            joined = next();
                         }
+
+                        if (!hasNext()) {
+                            afterAll.forEach(Runnable::run);
+                        }
+
                         return joined;
                     } else if (leftTableIterator.hasNext()) {
                         Table leftTable = curLeftTableFuture.join();
@@ -96,7 +102,13 @@ public class Joiner {
                         Join join = holder.getJoins().get(curJoin);
 
                         curLeftTableFuture = null;
-                        return joinTables(leftTable, rightTable, join, holder, additionalFields);
+                        Table result = joinTables(leftTable, rightTable, join, holder, additionalFields);
+
+                        if (!hasNext()) {
+                            afterAll.forEach(Runnable::run);
+                        }
+
+                        return result;
                     }
                 }
 
@@ -114,10 +126,66 @@ public class Joiner {
     }
 
     private Table join(SqlHolder holder, Table leftTable, Table rightTable, Expression onExpression, Collection<SelectField> additionalFields) {
+        String[] idents = onExpression.toString().split("=");
+        if (onExpression.toString().split("=").length == 2
+                && Executor.IDENT_REGEXP.matcher(idents[0]).find()
+                && Executor.IDENT_REGEXP.matcher(idents[1]).find()
+        ) {
+            return hashJoin(holder, leftTable, rightTable, onExpression, additionalFields);
+            //return innerLoopsJoin(holder, leftTable, rightTable, onExpression, additionalFields);
+        } else {
+            return innerLoopsJoin(holder, leftTable, rightTable, onExpression, additionalFields);
+        }
+    }
+
+    @Nonnull
+    private Table hashJoin(SqlHolder holder, Table leftTable, Table rightTable, Expression onExpression, Collection<SelectField> additionalFields) {
+        String[] idents = onExpression.toString().split("=");
+        idents[0] = idents[0].trim();
+        idents[1] = idents[1].trim();
+
+        Table minTable = leftTable.size() < rightTable.size() ? leftTable : rightTable;
+        Table maxTable = leftTable == minTable ? rightTable : leftTable;
+
+        if (minTable.isEmpty() || maxTable.isEmpty()) {
+            return new Table();
+        }
+
+        String minTableIndex = minTable.getColumns().stream().anyMatch(col -> col.getUserInputName().equalsIgnoreCase(idents[0])) ? idents[0] : idents[1];
+        String maxTableIndex = idents[0] == minTableIndex ? idents[1] : idents[0];
+
+        HashMap<Object, List<Row>> minTableMap = new HashMap<>(minTable.size());
+
+        for (Row row : minTable.getRows()) {
+            Object rowIndex = row.getObject(holder.getByUserInput(minTableIndex));
+
+            if (minTableMap.containsKey(rowIndex)) {
+                minTableMap.get(rowIndex).add(row);
+            } else {
+                minTableMap.put(rowIndex, Lists.newArrayList(row));
+            }
+        }
+
         Table result = new Table();
+        for (Row row : maxTable.getRows()) {
+            List<Row> rowsToJoin = minTableMap.get(row.getObject(holder.getByUserInput(maxTableIndex)));
+            if (rowsToJoin == null || rowsToJoin.isEmpty()) {
+                continue;
+            }
+            for (Row rowToJoin : rowsToJoin) {
+                addRow(holder, result, joinRows(result, row, rowToJoin, leftTable, rightTable), additionalFields);
+            }
+        }
+
+        return result;
+    }
+
+    @Nonnull
+    private Table innerLoopsJoin(SqlHolder holder, Table leftTable, Table rightTable, Expression onExpression, Collection<SelectField> additionalFields) {
         HashMap<String, Integer> colMapping = getIdentMapping(onExpression.toString());
         RowJEP sqljep = prepareSqlJEP(onExpression, colMapping);
 
+        Table result = new Table();
         for (Row leftRow : leftTable.getRows()) {
             for (Row rightRow : rightTable.getRows()) {
                 Comparable[] row = new Comparable[colMapping.size()];

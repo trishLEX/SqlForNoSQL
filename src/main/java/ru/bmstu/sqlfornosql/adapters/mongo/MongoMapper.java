@@ -163,9 +163,13 @@ public class MongoMapper {
             row.add(key, value.asDouble().doubleValue());
             typeMap.put(key, RowType.DOUBLE);
         } else if (value.isInt64()) {
-            //TODO сделать поддержку разницы между int32 и int64
-            row.add(key, value.asInt64().getValue());
-            typeMap.put(key, RowType.INT);
+            if (Integer.MAX_VALUE < value.asInt64().getValue()) {
+                row.add(key, value.asInt64().getValue());
+                typeMap.put(key, RowType.LONG);
+            } else {
+                row.add(key, value.asInt64().intValue());
+                typeMap.put(key, RowType.INT);
+            }
         } else if (value.isInt32()) {
             row.add(key, value.asInt32().getValue());
             typeMap.put(key, RowType.INT);

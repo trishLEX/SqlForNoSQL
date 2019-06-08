@@ -34,7 +34,11 @@ public class PostgresMapper {
 
             @Override
             public Table next() {
-                return mapResultSet(iterator.next(), query);
+                Table table = mapResultSet(iterator.next(), query);
+                if (!hasNext()) {
+                    afterAll.forEach(Runnable::run);
+                }
+                return table;
             }
 
             @Nonnull
@@ -49,7 +53,11 @@ public class PostgresMapper {
 
                     @Override
                     public Table next() {
-                        return mapResultSet(rsIterator.next(), query);
+                        Table table = mapResultSet(rsIterator.next(), query);
+                        if (!hasNext()) {
+                            afterAll.forEach(Runnable::run);
+                        }
+                        return table;
                     }
                 };
             }
@@ -92,9 +100,10 @@ public class PostgresMapper {
 
     private RowType getTypeFromSqlType(int type) {
         switch (type) {
+            case BIGINT:
+                return RowType.LONG;
             case BIT:
             case TINYINT:
-            case BIGINT:
             case INTEGER:
             case SMALLINT:
                 return RowType.INT;
@@ -127,6 +136,8 @@ public class PostgresMapper {
             switch (type) {
                 case INT:
                     return resultSet.getInt(column);
+                case LONG:
+                    return resultSet.getLong(column);
                 case DOUBLE:
                     return resultSet.getDouble(column);
                 case DATE:

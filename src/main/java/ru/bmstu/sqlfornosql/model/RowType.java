@@ -5,6 +5,7 @@ public enum RowType {
     DATE("TIMESTAMP"),
     DOUBLE("DOUBLE"),
     INT("INT"),
+    LONG("LONG"),
     STRING("VARCHAR"),
     NULL("OTHER");
 
