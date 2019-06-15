@@ -32,7 +32,7 @@ public class MongoAdapter {
     }
 
     private void validate(SqlHolder sqlHolder) {
-        Preconditions.checkArgument(sqlHolder.getJoins() == null || sqlHolder.getJoins().isEmpty(),
+        Preconditions.checkArgument(sqlHolder.getJoin() == null,
                 "Joins are not supported.  Only one simple table name is supported.");
     }
 }

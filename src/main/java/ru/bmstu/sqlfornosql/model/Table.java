@@ -115,8 +115,6 @@ public class Table {
         }
         switch (type) {
             case NULL:
-                //TODO LOG IT
-                System.out.println("LOG HERE");
                 return 0;
             case INT: {
                 Integer o1 = (Integer) a;

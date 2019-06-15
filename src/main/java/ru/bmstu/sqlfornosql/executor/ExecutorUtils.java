@@ -151,6 +151,9 @@ public class ExecutorUtils {
                         case INT:
                             query.append(row.getInt(selectField));
                             break;
+                        case LONG:
+                            query.append(row.getLong(selectField));
+                            break;
                         case NULL:
                             query.append("null");
                             break;

@@ -3,6 +3,8 @@ package ru.bmstu.sqlfornosql.executor;
 import com.google.common.collect.Lists;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.statement.select.Join;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.medfoster.sqljep.ParseException;
 import org.medfoster.sqljep.RowJEP;
 import org.springframework.stereotype.Component;
@@ -23,101 +25,86 @@ import static ru.bmstu.sqlfornosql.executor.ExecutorUtils.prepareSqlJEP;
 @ParametersAreNonnullByDefault
 @Component
 public class Joiner {
-    public TableIterator join(SqlHolder holder, TableIterator from, List<TableIterator> joinTables, Collection<SelectField> additionalFields) {
+    private static final Logger logger = LogManager.getLogger(Joiner.class);
+    public TableIterator join(
+            SqlHolder sqlHolder,
+            TableIterator left, TableIterator right,
+            SelectField leftKey, SelectField rightKey,
+            Collection<SelectField> additionalFields
+    ) {
         return new TableIterator() {
-            private Iterator<Table> leftTableIterator = from.iterator();
-            private int joinsSize = holder.getJoins().size();
-            private int curJoin = 0;
-            private Iterator<Table> curRightTableIterator = joinTables.get(curJoin).iterator();
+            private Iterator<Table> leftTableIterator = left.iterator();
+            private Iterator<Table> rightTableIterator = right.iterator();
             private CompletableFuture<Table> curLeftTableFuture;
             private CompletableFuture<Table> curRightTableFuture;
+            private long limit = sqlHolder.getLimit();
+            private long count = 0;
+            private Comparable lastLeftJoinKey;
+            private Comparable lastRightJoinKey;
+            private SelectField leftTableKey = leftKey;
+            private SelectField rightTableKey = rightKey;
+            private SqlHolder holder = sqlHolder;
 
             @Nonnull
             @Override
             public Iterator<Table> iterator() {
-                return join(holder, from, joinTables, additionalFields);
+                return join(holder, left, right, leftKey, rightKey, additionalFields);
             }
 
             @Override
             public boolean hasNext() {
-                boolean hasNext = leftTableIterator.hasNext() || curRightTableIterator.hasNext() || curJoin < joinsSize;
+                if (limit > 0 && count >= limit) {
+                    return false;
+                }
+                boolean hasNext = leftTableIterator.hasNext() && rightTableIterator.hasNext();
                 if (!hasNext) {
                     return false;
                 }
 
-                if (curRightTableIterator.hasNext()) {
-                    if (curRightTableFuture == null) {
-                        curRightTableFuture = CompletableFuture.supplyAsync(curRightTableIterator::next, Executor.EXECUTOR);
-                    }
-                    if (curLeftTableFuture == null) {
-                        curLeftTableFuture = CompletableFuture.supplyAsync(leftTableIterator::next, Executor.EXECUTOR);
-                    }
-                    return true;
+                if (curRightTableFuture == null) {
+                    curRightTableFuture = CompletableFuture.supplyAsync(rightTableIterator::next, Executor.EXECUTOR);
                 }
-
-                curRightTableFuture = null;
-                if (curJoin < joinsSize - 1) {
-                    curJoin++;
-                    curRightTableIterator = joinTables.get(curJoin).iterator();
-                    return hasNext();
+                if (curLeftTableFuture == null) {
+                    curLeftTableFuture = CompletableFuture.supplyAsync(leftTableIterator::next, Executor.EXECUTOR);
                 }
-
-                curLeftTableFuture = null;
-
-                if (leftTableIterator.hasNext()) {
-                    curJoin = 0;
-                    curRightTableIterator = joinTables.get(curJoin).iterator();
-                    curRightTableFuture = null;
-                    if (curLeftTableFuture == null) {
-                        curLeftTableFuture = CompletableFuture.supplyAsync(leftTableIterator::next, Executor.EXECUTOR);
-                    }
-                    return hasNext();
-                }
-
-                return false;
+                return true;
             }
 
             @Override
             public Table next() {
                 if (hasNext()) {
-                    if (curRightTableIterator.hasNext()) {
                         Table leftTable = curLeftTableFuture.join();
                         Table rightTable = curRightTableFuture.join();
-                        Join join = holder.getJoins().get(curJoin);
 
-                        curRightTableFuture = null;
-                        Table joined = joinTables(leftTable, rightTable, join, holder, additionalFields);
-                        if (joined.isEmpty() && hasNext()) {
-                            joined = next();
+                        Table joined = joinTables(leftTable, rightTable, holder.getJoin(), additionalFields);
+                        lastLeftJoinKey = getValue(leftTable.getRows().get(leftTable.size() - 1), leftKey);
+                        lastRightJoinKey = getValue(rightTable.getRows().get(rightTable.size() - 1), rightKey);
+                        if (lastLeftJoinKey.compareTo(lastRightJoinKey) < 0) {
+                            curLeftTableFuture = null;
+                        } else {
+                            curRightTableFuture = null;
                         }
+
+                        count += joined.size();
 
                         if (!hasNext()) {
                             afterAll.forEach(Runnable::run);
                         }
 
                         return joined;
-                    } else if (leftTableIterator.hasNext()) {
-                        Table leftTable = curLeftTableFuture.join();
-                        Table rightTable = curRightTableFuture.join();
-                        Join join = holder.getJoins().get(curJoin);
-
-                        curLeftTableFuture = null;
-                        Table result = joinTables(leftTable, rightTable, join, holder, additionalFields);
-
-                        if (!hasNext()) {
-                            afterAll.forEach(Runnable::run);
-                        }
-
-                        return result;
-                    }
                 }
 
                 throw new NoSuchElementException();
             }
 
-            private Table joinTables(Table leftTable, Table rightTable, Join join, SqlHolder holder, Collection<SelectField> additionalFields) {
+            private Table joinTables(Table leftTable, Table rightTable, Join join, Collection<SelectField> additionalFields) {
                 if (join.getOnExpression() != null) {
-                    return join(holder, leftTable, rightTable, join.getOnExpression(), additionalFields);
+                    return join(
+                            holder,
+                            leftTable, rightTable,
+                            leftTableKey, rightTableKey,
+                            join.getOnExpression(), additionalFields, limit
+                    );
                 } else {
                     return join(holder, leftTable, rightTable, additionalFields);
                 }
@@ -125,13 +112,17 @@ public class Joiner {
         };
     }
 
-    private Table join(SqlHolder holder, Table leftTable, Table rightTable, Expression onExpression, Collection<SelectField> additionalFields) {
+    private Table join(SqlHolder holder,
+                       Table leftTable, Table rightTable,
+                       SelectField leftTableKey, SelectField rightTableKey,
+                       Expression onExpression, Collection<SelectField> additionalFields, long limit
+    ) {
         String[] idents = onExpression.toString().split("=");
         if (onExpression.toString().split("=").length == 2
                 && Executor.IDENT_REGEXP.matcher(idents[0]).find()
                 && Executor.IDENT_REGEXP.matcher(idents[1]).find()
         ) {
-            return hashJoin(holder, leftTable, rightTable, onExpression, additionalFields);
+            return hashJoin(holder, leftTable, rightTable, leftTableKey, rightTableKey, additionalFields, limit);
             //return innerLoopsJoin(holder, leftTable, rightTable, onExpression, additionalFields);
         } else {
             return innerLoopsJoin(holder, leftTable, rightTable, onExpression, additionalFields);
@@ -139,25 +130,35 @@ public class Joiner {
     }
 
     @Nonnull
-    private Table hashJoin(SqlHolder holder, Table leftTable, Table rightTable, Expression onExpression, Collection<SelectField> additionalFields) {
-        String[] idents = onExpression.toString().split("=");
-        idents[0] = idents[0].trim();
-        idents[1] = idents[1].trim();
-
-        Table minTable = leftTable.size() < rightTable.size() ? leftTable : rightTable;
-        Table maxTable = leftTable == minTable ? rightTable : leftTable;
+    private Table hashJoin(SqlHolder holder,
+                           Table leftTable, Table rightTable,
+                           SelectField leftTableKey, SelectField rightTableKey,
+                           Collection<SelectField> additionalFields, long limit
+    ) {
+        Table minTable;
+        Table maxTable;
+        SelectField minTableIndex;
+        SelectField maxTableIndex;
+        if (leftTable.size() < rightTable.size()) {
+            minTable = leftTable;
+            maxTable = rightTable;
+            minTableIndex = leftTableKey;
+            maxTableIndex = rightTableKey;
+        } else {
+            maxTable = leftTable;
+            minTable = rightTable;
+            maxTableIndex = leftTableKey;
+            minTableIndex = rightTableKey;
+        }
 
         if (minTable.isEmpty() || maxTable.isEmpty()) {
             return new Table();
         }
 
-        String minTableIndex = minTable.getColumns().stream().anyMatch(col -> col.getUserInputName().equalsIgnoreCase(idents[0])) ? idents[0] : idents[1];
-        String maxTableIndex = idents[0] == minTableIndex ? idents[1] : idents[0];
-
         HashMap<Object, List<Row>> minTableMap = new HashMap<>(minTable.size());
 
         for (Row row : minTable.getRows()) {
-            Object rowIndex = row.getObject(holder.getByUserInput(minTableIndex));
+            Object rowIndex = row.getObject(minTableIndex);
 
             if (minTableMap.containsKey(rowIndex)) {
                 minTableMap.get(rowIndex).add(row);
@@ -168,12 +169,15 @@ public class Joiner {
 
         Table result = new Table();
         for (Row row : maxTable.getRows()) {
-            List<Row> rowsToJoin = minTableMap.get(row.getObject(holder.getByUserInput(maxTableIndex)));
+            List<Row> rowsToJoin = minTableMap.get(row.getObject(maxTableIndex));
             if (rowsToJoin == null || rowsToJoin.isEmpty()) {
                 continue;
             }
             for (Row rowToJoin : rowsToJoin) {
                 addRow(holder, result, joinRows(result, row, rowToJoin, leftTable, rightTable), additionalFields);
+                if (result.size() == limit) {
+                    return result;
+                }
             }
         }
 

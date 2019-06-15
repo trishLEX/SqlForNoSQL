@@ -1,6 +1,7 @@
 package ru.bmstu.sqlfornosql.executor;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.statement.select.*;
@@ -83,7 +84,7 @@ public class Executor implements AutoCloseable {
     }
 
     public TableIterator execute(SqlHolder sqlHolder) {
-        if (sqlHolder.getJoins().isEmpty()) {
+        if (sqlHolder.getJoin() == null) {
             return simpleSelect(sqlHolder);
         } else {
             return selectWithJoins(sqlHolder);
@@ -216,7 +217,15 @@ public class Executor implements AutoCloseable {
         List<String> queries = new ArrayList<>();
 
         Set<SelectField> additionalSelectItems = new HashSet<>();
+        Map<FromItem, SelectField> joinFieldsMap = new HashMap<>();
         for (Map.Entry<FromItem, List<SelectItem>> fromItemListEntry : sqlHolder.getSelectItemMap().entrySet()) {
+            List<SelectField> joinsFields = getAdditionalSelectItemsStrings(fromItemListEntry.getKey(), sqlHolder.getJoin(), Collections.emptySet());
+            Set<SelectField> fields = fromItemListEntry.getValue().stream()
+                    .map(item -> sqlHolder.getItemToField().get(item))
+                    .collect(Collectors.toSet());
+            SelectField joinField = fields.stream().filter(joinsFields::contains).findFirst().orElse(joinsFields.get(0));
+            joinFieldsMap.put(fromItemListEntry.getKey(), joinField);
+
             SqlHolder holder = new SqlHolder.Builder()
                     .withSelectItems(fromItemListEntry.getValue())
                     .withFromItem(fromItemListEntry.getKey())
@@ -224,7 +233,7 @@ public class Executor implements AutoCloseable {
 
             Set<SelectField> selectItemsStr = Sets.newHashSet(holder.getSelectFields());
 
-            holder.addAllAdditionalSelectFields(getAdditionalSelectItemsStrings(fromItemListEntry.getKey(), sqlHolder.getJoins(), selectItemsStr));
+            holder.addAllAdditionalSelectFields(getAdditionalSelectItemsStrings(fromItemListEntry.getKey(), sqlHolder.getJoin(), selectItemsStr));
 
             if (sqlHolder.getWhereClause() != null) {
                 holder.addAllAdditionalSelectFields(getIdentsFromExpression(fromItemListEntry.getKey(), sqlHolder.getWhereClause(), selectItemsStr));
@@ -251,6 +260,8 @@ public class Executor implements AutoCloseable {
                 }
             }
 
+            query += " ORDER BY " + joinField.getUserInputName() + " ";
+
             queries.add(query);
 
             TableIterator result = execute(query);
@@ -265,10 +276,13 @@ public class Executor implements AutoCloseable {
             throw new IllegalStateException("FromItem can not be null");
         }
 
+        TableIterator joinIterator = Iterables.get(resultParts.values(), 0);
         TableIterator result = joiner.join(
                 sqlHolder,
                 from,
-                new ArrayList<>(resultParts.values()),
+                joinIterator,
+                joinFieldsMap.get(sqlHolder.getFromItem()),
+                joinFieldsMap.get(Iterables.get(resultParts.keySet(), 0)),
                 Sets.difference(additionalSelectItems, Sets.newHashSet(sqlHolder.getSelectFields()))
         );
 
@@ -288,12 +302,10 @@ public class Executor implements AutoCloseable {
         return result;
     }
 
-    private List<SelectField> getAdditionalSelectItemsStrings(FromItem from, List<Join> joins, Set<SelectField> existingSelectItems) {
+    private List<SelectField> getAdditionalSelectItemsStrings(FromItem from, Join join, Set<SelectField> existingSelectItems) {
         List<SelectField> selectFields = new ArrayList<>();
-        for (Join join : joins) {
-            if (join.getOnExpression() != null) {
-                selectFields.addAll(getIdentsFromExpression(from, join.getOnExpression(), existingSelectItems));
-            }
+        if (join.getOnExpression() != null) {
+            selectFields.addAll(getIdentsFromExpression(from, join.getOnExpression(), existingSelectItems));
         }
 
         return selectFields;
@@ -321,7 +333,7 @@ public class Executor implements AutoCloseable {
     }
 
     private void fillIdents(Set<SelectField> selectItems, List<String> destination, String str) {
-        Set<String> selectItemsStr = selectItems.stream().map(SelectField::getNonQualifiedIdent).collect(Collectors.toSet());
+        Set<String> selectItemsStr = selectItems.stream().map(SelectField::getQualifiedIdent).collect(Collectors.toSet());
         List<String> idents = ExecutorUtils.getIdentsFromString(str);
 
         if (selectItemsStr.containsAll(idents)) {

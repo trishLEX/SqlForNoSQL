@@ -35,7 +35,9 @@ public class SqlHolder {
     @Nullable
     private Expression whereClause;
     private List<SelectItem> selectItems;
-    private List<Join> joins;
+
+    @Nullable
+    private Join join;
     private List<SelectField> groupBys;
 
     @Nullable
@@ -57,8 +59,7 @@ public class SqlHolder {
         isSelectAll = false;
         limit = -1;
         offset = -1;
-        selectItems = new ArrayList<>();
-        joins = new ArrayList<>();
+        selectItems = new ArrayList<>();;
         groupBys = new ArrayList<>();
         orderByElements = new ArrayList<>();
         orderBys = new ArrayList<>();
@@ -147,10 +148,11 @@ public class SqlHolder {
 
         public Builder withJoins(@Nullable List<Join> joins) {
             if (joins != null) {
-                holder.joins = joins;
-                for (Join join : joins) {
-                    holder.selectItemMap.put(join.getRightItem(), Lists.newArrayList());
+                if (joins.size() > 1) {
+                    throw new IllegalArgumentException("Don't support multiple joins");
                 }
+                holder.join = joins.get(0);
+                holder.selectItemMap.put(holder.join.getRightItem(), Lists.newArrayList());
             }
             return this;
         }
@@ -179,7 +181,7 @@ public class SqlHolder {
             return this;
         }
 
-        private Builder withOrderBy(@Nullable List<OrderableSelectField> orderByElements) {
+        public Builder withOrderBy(@Nullable List<OrderableSelectField> orderByElements) {
             if (orderByElements != null) {
                 holder.orderBys = orderByElements;
             }
@@ -197,7 +199,8 @@ public class SqlHolder {
         public SqlHolder build() {
             List<FromItem> fromItems = StreamEx
                     .of(holder.fromItem)
-                    .append(holder.joins.stream().map(Join::getRightItem))
+                    .append(StreamEx.of(holder.join).filter(Objects::nonNull).map(Join::getRightItem))
+                    .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
             for (SelectItem selectItem : holder.selectItems) {
@@ -294,6 +297,10 @@ public class SqlHolder {
         }
     }
 
+    public Map<SelectItem, SelectField> getItemToField() {
+        return itemToField;
+    }
+
     public DatabaseName getDatabase() {
         return database;
     }
@@ -344,8 +351,9 @@ public class SqlHolder {
         additionalSelectFields.addAll(items);
     }
 
-    public List<Join> getJoins() {
-        return joins;
+    @Nullable
+    public Join getJoin() {
+        return join;
     }
 
     public List<SelectField> getGroupBys() {
@@ -471,7 +479,7 @@ public class SqlHolder {
             }
         }
 
-        for (Join join : joins) {
+        if (join != null) {
             String joinStr = getStringFromJoin(join);
             sb.append(" ").append(joinStr).append(" ");
         }
@@ -540,6 +548,13 @@ public class SqlHolder {
             sb.append(" ORDER BY ")
                     .append(orderBys.stream()
                             .map(OrderableSelectField::toString)
+                            .map(ident -> {
+                                if (ident.codePoints().filter(cp -> cp == '.').count() == 4) {
+                                    return ident.substring(ident.indexOf('.') + 1);
+                                } else {
+                                    return ident;
+                                }
+                            })
                             .collect(Collectors.joining(", "))
             );
         }
@@ -626,7 +641,7 @@ public class SqlHolder {
             }
         }
 
-        for (Join join : joins) {
+        if (join != null) {
             sb.append(" ");
             sb.append(join);
         }

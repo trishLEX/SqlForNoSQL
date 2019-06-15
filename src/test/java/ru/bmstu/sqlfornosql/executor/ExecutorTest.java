@@ -114,7 +114,7 @@ public class ExecutorTest extends FunctionalTest {
     public void selectJoinGroupBy() {
         String query = "SELECT max(postgres.test.test.dateField), postgres.test.test.intField FROM postgres.postgres.test.test JOIN mongodb.test.test " +
                 "ON mongodb.test.test.intField = postgres.test.test.intField " +
-                "GROUP BY postgres.test.test.intField";
+                "GROUP BY postgres.test.test.intField LIMIT 10";
         Iterator<Table> table = executor.execute(query);
         Table result = new Table();
         while (table.hasNext()) {

@@ -40,10 +40,12 @@ public class Main implements CommandLineRunner {
     }
 
     private static void printResult(Iterator<Table> table) {
-        Table result = new Table();
+        long time = System.currentTimeMillis();
         while (table.hasNext()) {
-            result.add(table.next());
+            Table result = table.next();
+            //System.out.println(result);
+            //table.next();
         }
-        System.out.println(result);
+        System.out.println("time: " + (System.currentTimeMillis() - time));
     }
 }
