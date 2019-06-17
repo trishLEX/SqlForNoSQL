@@ -56,18 +56,23 @@ public class Joiner {
                 if (limit > 0 && count >= limit) {
                     return false;
                 }
-                boolean hasNext = leftTableIterator.hasNext() && rightTableIterator.hasNext();
-                if (!hasNext) {
-                    return false;
-                }
 
-                if (curRightTableFuture == null) {
-                    curRightTableFuture = CompletableFuture.supplyAsync(rightTableIterator::next, Executor.EXECUTOR);
+                if (curRightTableFuture != null && curLeftTableFuture != null) {
+                    return true;
+                } else {
+                    boolean hasNext = leftTableIterator.hasNext() && rightTableIterator.hasNext();
+                    if (!hasNext) {
+                        return false;
+                    }
+
+                    if (curRightTableFuture == null) {
+                        curRightTableFuture = CompletableFuture.supplyAsync(rightTableIterator::next, Executor.EXECUTOR);
+                    }
+                    if (curLeftTableFuture == null) {
+                        curLeftTableFuture = CompletableFuture.supplyAsync(leftTableIterator::next, Executor.EXECUTOR);
+                    }
+                    return true;
                 }
-                if (curLeftTableFuture == null) {
-                    curLeftTableFuture = CompletableFuture.supplyAsync(leftTableIterator::next, Executor.EXECUTOR);
-                }
-                return true;
             }
 
             @Override
@@ -79,6 +84,12 @@ public class Joiner {
                         Table joined = joinTables(leftTable, rightTable, holder.getJoin(), additionalFields);
                         lastLeftJoinKey = getValue(leftTable.getRows().get(leftTable.size() - 1), leftKey);
                         lastRightJoinKey = getValue(rightTable.getRows().get(rightTable.size() - 1), rightKey);
+                        if (lastLeftJoinKey instanceof Integer) {
+                            lastLeftJoinKey = ((Integer) lastLeftJoinKey).doubleValue();
+                        }
+                        if (lastRightJoinKey instanceof Integer) {
+                            lastRightJoinKey = ((Integer) lastRightJoinKey).doubleValue();
+                        }
                         if (lastLeftJoinKey.compareTo(lastRightJoinKey) < 0) {
                             curLeftTableFuture = null;
                         } else {
@@ -174,7 +185,7 @@ public class Joiner {
                 continue;
             }
             for (Row rowToJoin : rowsToJoin) {
-                addRow(holder, result, joinRows(result, row, rowToJoin, leftTable, rightTable), additionalFields);
+                addRow(holder, result, joinRows(result, row, rowToJoin, maxTable, minTable), additionalFields);
                 if (result.size() == limit) {
                     return result;
                 }

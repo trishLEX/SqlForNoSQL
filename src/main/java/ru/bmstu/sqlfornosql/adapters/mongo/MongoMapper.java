@@ -159,9 +159,6 @@ public class MongoMapper {
                     LocalDateTime.ofInstant(Instant.ofEpochMilli(value.asDateTime().getValue()), ZoneId.systemDefault())
             );
             typeMap.put(key, RowType.DATE);
-        } else if (value.isDouble()) {
-            row.add(key, value.asDouble().doubleValue());
-            typeMap.put(key, RowType.DOUBLE);
         } else if (value.isInt64()) {
             if (Integer.MAX_VALUE < value.asInt64().getValue()) {
                 row.add(key, value.asInt64().getValue());
@@ -173,6 +170,9 @@ public class MongoMapper {
         } else if (value.isInt32()) {
             row.add(key, value.asInt32().getValue());
             typeMap.put(key, RowType.INT);
+        } else if (value.isDouble()) {
+            row.add(key, value.asDouble().doubleValue());
+            typeMap.put(key, RowType.DOUBLE);
         } else if (value.isString()) {
             row.add(key, value.asString().getValue());
             typeMap.put(key, RowType.STRING);
